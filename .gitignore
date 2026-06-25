@@ -1,0 +1,6 @@
+READMElocal.md
+output/
+tmp/
+.demo-output/
+__pycache__/
+.xlsx

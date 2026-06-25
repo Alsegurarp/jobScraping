@@ -1,0 +1,92 @@
+import urllib.error
+from urllib.parse import urlparse
+
+from .browser import extract_with_browser
+from .extractor_utils import (
+    detect_block,
+    fetch_html,
+    first_email,
+    html_to_text,
+    infer_portal,
+    merge_if_empty,
+    meta_content,
+    page_title,
+)
+from .portals.computrabajo import extract_from_markup as extract_computrabajo_markup
+from .portals.glassdoor import extract_from_markup as extract_glassdoor_markup
+from .portals.indeed import extract_from_markup as extract_indeed_markup
+from .portals.linkedin import extract_from_markup as extract_linkedin_markup
+from .portals.occ import extract_from_markup as extract_occ_markup
+from .schema import normalize_job_row
+from .utils import clean_text
+
+
+def portal_updates(row, markup):
+    url = clean_text(row.get("url"))
+    host = urlparse(url).netloc.lower()
+    if "indeed" in host:
+        return extract_indeed_markup(row, markup)
+    if "computrabajo" in host:
+        return extract_computrabajo_markup(row, markup)
+    if "occ" in host:
+        return extract_occ_markup(row, markup)
+    if "glassdoor" in host:
+        return extract_glassdoor_markup(row, markup)
+    if "linkedin" in host:
+        return extract_linkedin_markup(row, markup)
+    return generic_updates(row, markup)
+
+
+def generic_updates(row, markup):
+    url = clean_text(row.get("url"))
+    text = html_to_text(markup)
+    block_status = detect_block(text)
+    description = meta_content(markup, "description", "og:description", "twitter:description")
+    if not description and text:
+        description = clean_text(text[:5000])
+
+    title = page_title(markup)
+    updates = {
+        "titulo": title,
+        "portal": infer_portal(url),
+        "descripcion": description,
+        "email_contacto": first_email(text),
+        "fuente_extraccion": "link",
+        "estado_extraccion": block_status or ("ok" if description else "sin_descripcion"),
+        "requiere_intervencion": "si" if block_status in {"captcha", "login_requerido", "bloqueado"} else "no",
+    }
+    return updates
+
+
+def extraction_error(row, url, status, description, intervention="no"):
+    return normalize_job_row({
+        **row,
+        "portal": clean_text(row.get("portal")) or infer_portal(url),
+        "fuente_extraccion": "link",
+        "estado_extraccion": status,
+        "requiere_intervencion": intervention,
+        "descripcion": clean_text(row.get("descripcion")) or description,
+    }, source="link")
+
+
+def extract_link(row):
+    url = clean_text(row.get("url"))
+    if not url:
+        return normalize_job_row({**row, "estado_extraccion": "sin_url", "requiere_intervencion": "si"}, source="link")
+
+    try:
+        markup = fetch_html(url)
+    except urllib.error.HTTPError as exc:
+        status = "bloqueado" if exc.code in {401, 403, 429} else "error_red"
+        return extraction_error(row, url, status, f"No se pudo abrir el link: HTTP {exc.code}", "si" if status == "bloqueado" else "no")
+    except Exception as exc:
+        return extraction_error(row, url, "error_red", f"No se pudo abrir el link: {exc}")
+
+    updates = portal_updates(row, markup)
+    return normalize_job_row(merge_if_empty(row, updates), source="link")
+
+
+def extract_links(rows, use_browser=False):
+    if use_browser:
+        return [extract_with_browser(row) for row in rows]
+    return [extract_link(row) for row in rows]
