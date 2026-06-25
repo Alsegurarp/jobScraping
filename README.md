@@ -94,6 +94,14 @@ python .\bot_jobs.py --auto-search --profile .\profile.example.json --out .\outp
 
 Portales aceptados en `--portals`: `indeed`, `linkedin`, `occ`, `computrabajo`, `glassdoor`.
 
+Para buscar solo en Indeed y OCC:
+
+```powershell
+python .\bot_jobs.py --auto-search --profile .\profile.example.json --out .\output --portals indeed,occ --max-results 10
+```
+
+`--portals` es la forma declarativa de indicar en que plataformas debe buscar el bot. Si no se declara, intenta buscar en todos los portales soportados.
+
 Estado actual: `--auto-search` usa paginas de resultados publicas y extrae links candidatos. Si un portal bloquea, cambia su estructura o no muestra resultados publicos, puede devolver pocos resultados o ninguno. Los links encontrados pasan por los extractores del paso 5.
 
 ## Roadmap del nucleo
