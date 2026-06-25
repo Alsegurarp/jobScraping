@@ -2,7 +2,9 @@ import argparse
 from datetime import date, timedelta
 from pathlib import Path
 
+from .cache import load_ignored_urls, remember_ignored_urls
 from .extractors import extract_links
+from .extractor_utils import configure_cache
 from .letters import cover_letter, recruiter_message
 from .profile import load_profile
 from .ranking import detect_language, parse_date, score_job, short_reason
@@ -13,6 +15,7 @@ from .workbook import create_template, read_sheet, write_output
 
 
 def result_row(profile, row, score, status, matched_skills, flags, letter_path="", message=""):
+    ignore_future = "si" if status == "descartada" else clean_text(row.get("ignorar_en_futuro")) or "no"
     return {
         "prioridad": "",
         "score": score,
@@ -32,6 +35,7 @@ def result_row(profile, row, score, status, matched_skills, flags, letter_path="
         "fuente_extraccion": clean_text(row.get("fuente_extraccion")),
         "requiere_intervencion": clean_text(row.get("requiere_intervencion")),
         "estado_extraccion": clean_text(row.get("estado_extraccion")),
+        "ignorar_en_futuro": ignore_future,
         "documento_que_se_manda": profile.get("cv_file", "Rene_Alexis_Segura_CV.pdf"),
         "carta_de_interes_al_rol": str(letter_path) if letter_path else "",
         "mensaje_corto_reclutador": message,
@@ -51,15 +55,27 @@ def run(
     auto_search_enabled=False,
     max_results=25,
     portal_names=None,
+    refresh_cache=False,
+    cache_ttl_hours=120,
 ):
+    configure_cache(enabled=True, ttl_hours=cache_ttl_hours, refresh=refresh_cache)
     profile = load_profile(profile_path)
+    ignored_urls = load_ignored_urls()
     if auto_search_enabled:
         rows = auto_search(profile, max_results=max_results, portal_names=portal_names)
         extract_links_enabled = True
     else:
         rows = read_sheet(jobs_path)
+    rows = [
+        {**row, "ignorar_en_futuro": "si", "estado_extraccion": "ignorada_previamente"}
+        if clean_text(row.get("url")) in ignored_urls
+        else row
+        for row in rows
+    ]
     if extract_links_enabled and rows:
-        rows = extract_links(rows, use_browser=browser_enabled)
+        rows_to_extract = [row for row in rows if clean_text(row.get("ignorar_en_futuro")).lower() != "si"]
+        ignored_rows = [row for row in rows if clean_text(row.get("ignorar_en_futuro")).lower() == "si"]
+        rows = [*extract_links(rows_to_extract, use_browser=browser_enabled), *ignored_rows]
     output_dir.mkdir(parents=True, exist_ok=True)
     letters_dir = output_dir / "cartas"
     letters_dir.mkdir(parents=True, exist_ok=True)
@@ -76,6 +92,10 @@ def run(
             row = {**row, "descripcion": f"{clean_text(row.get('descripcion'))} vacante_mayor_a_2_semanas"}
 
         score, status, matched_skills, _matched_interests, flags = score_job(profile, row)
+        if clean_text(row.get("ignorar_en_futuro")).lower() == "si":
+            status = "descartada"
+            flags = [*flags, "ignorada_en_corrida_previa"]
+            score = min(score, 1)
         company = clean_text(row.get("empresa"))
         if company not in research_by_company:
             research_by_company[company] = research_company(row, research_enabled)
@@ -94,6 +114,8 @@ def run(
             shortlisted.append(result)
         else:
             discarded.append(result)
+
+    remember_ignored_urls(detected)
 
     detected.sort(key=lambda item: item["score"], reverse=True)
     shortlisted.sort(key=lambda item: item["score"], reverse=True)
@@ -126,6 +148,8 @@ def main():
     parser.add_argument("--auto-search", action="store_true", help="Busca vacantes automaticamente en portales soportados.")
     parser.add_argument("--max-results", type=int, default=25, help="Maximo de vacantes candidatas en auto-search.")
     parser.add_argument("--portals", default="", help="Portales para auto-search separados por coma: indeed,linkedin,occ,computrabajo,glassdoor.")
+    parser.add_argument("--refresh-cache", action="store_true", help="Ignora cache HTML existente y vuelve a descargar.")
+    parser.add_argument("--cache-ttl-hours", type=int, default=120, help="Horas de vida del cache HTML.")
     parser.add_argument("--create-template", action="store_true", help="Crea una plantilla .xlsx de vacantes.")
     parser.add_argument("--demo", action="store_true")
     args = parser.parse_args()
@@ -152,5 +176,7 @@ def main():
         args.auto_search,
         args.max_results,
         portal_names,
+        args.refresh_cache,
+        args.cache_ttl_hours,
     )
     print(f"Listo: {output_path}")

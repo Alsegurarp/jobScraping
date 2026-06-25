@@ -25,6 +25,7 @@ INPUT_COLUMNS = [
     "fuente_extraccion",
     "requiere_intervencion",
     "estado_extraccion",
+    "ignorar_en_futuro",
     "horas_semana",
     "seniority",
     "idioma",
@@ -57,6 +58,7 @@ RESULT_COLUMNS = [
     "fuente_extraccion",
     "requiere_intervencion",
     "estado_extraccion",
+    "ignorar_en_futuro",
     "documento_que_se_manda",
     "carta_de_interes_al_rol",
     "mensaje_corto_reclutador",
@@ -83,4 +85,5 @@ def normalize_job_row(row, source="xlsx"):
     normalized["fuente_extraccion"] = clean_text(normalized.get("fuente_extraccion")) or source
     normalized["requiere_intervencion"] = clean_text(normalized.get("requiere_intervencion")) or "no"
     normalized["estado_extraccion"] = clean_text(normalized.get("estado_extraccion")) or "pendiente"
+    normalized["ignorar_en_futuro"] = clean_text(normalized.get("ignorar_en_futuro")) or "no"
     return normalized

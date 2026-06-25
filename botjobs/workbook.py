@@ -102,6 +102,7 @@ def create_template(path):
         "manual",
         "no",
         "pendiente",
+        "no",
         40,
         "Junior",
         "es",

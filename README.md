@@ -102,6 +102,12 @@ python .\bot_jobs.py --auto-search --profile .\profile.example.json --out .\outp
 
 `--portals` es la forma declarativa de indicar en que plataformas debe buscar el bot. Si no se declara, intenta buscar en todos los portales soportados.
 
+Para forzar descarga nueva e ignorar el cache HTML:
+
+```powershell
+python .\bot_jobs.py --auto-search --profile .\profile.example.json --out .\output --portals indeed,occ --max-results 10 --refresh-cache
+```
+
 Estado actual: `--auto-search` usa paginas de resultados publicas y extrae links candidatos. Si un portal bloquea, cambia su estructura o no muestra resultados publicos, puede devolver pocos resultados o ninguno. Los links encontrados pasan por los extractores del paso 5.
 
 ## Roadmap del nucleo
@@ -112,7 +118,7 @@ Estado actual: `--auto-search` usa paginas de resultados publicas y extrae links
 4. Agregar navegador automatizado para abrir paginas reales y detectar captcha, login o bloqueo. Estado: implementado como `--extract-links --browser`.
 5. Implementar extractores por portal, uno por uno: Indeed, Computrabajo, OCC, Glassdoor y LinkedIn. Estado: implementacion inicial completa para links de vacantes.
 6. Crear modo `--auto-search` para buscar vacantes automaticamente en los portales soportados. Estado: implementado en version inicial.
-7. Agregar cache local de HTML/texto extraido para evitar repetir navegacion innecesaria.
+7. Agregar cache local de HTML/texto extraido para evitar repetir navegacion innecesaria. Estado: implementado con HTML bruto, TTL de 120 horas y `--refresh-cache`.
 8. Registrar estados de extraccion: `ok`, `captcha`, `login_requerido`, `bloqueado`, `estructura_no_reconocida`, `sin_descripcion` y `error_red`.
 9. Mejorar ranking con datos reales: industria, seniority, salario, modalidad, spam y trabajos por proyecto.
 10. Generar workbook operativo con hojas de detectadas, preseleccionadas, descartadas, requiere intervencion, empresas investigadas y aplicadas.
@@ -139,6 +145,7 @@ Todas las fuentes deben transformarse a estos campos antes de rankear o generar 
 - `fuente_extraccion`
 - `requiere_intervencion`
 - `estado_extraccion`
+- `ignorar_en_futuro`
 - `horas_semana`
 - `seniority`
 - `idioma`
@@ -155,6 +162,7 @@ Todas las fuentes deben transformarse a estos campos antes de rankear o generar 
 - `botjobs/letters.py`: cartas y mensajes cortos para reclutadores.
 - `botjobs/research.py`: investigacion web de empresas.
 - `botjobs/search.py`: busqueda automatica de links candidatos en portales.
+- `botjobs/cache.py`: cache HTML bruto y memoria local de URLs descartadas.
 - `botjobs/extractors.py`: extraccion generica de datos desde links.
 - `botjobs/browser.py`: extraccion con navegador automatizado.
 - `botjobs/browser_extract.mjs`: script Playwright usado por el extractor de navegador.
@@ -194,6 +202,16 @@ Ese archivo no se versiona y esta incluido en `.gitignore`.
 - Excluir: trabajos por proyecto, mas de 40 horas, guardias, nocturno, fines de semana, 24/7, alta disponibilidad y seniority alto.
 - Fase 1A no auto-aplica. Prepara compendio, ranking, investigacion y cartas.
 - Las vacantes con `estado=descartada` no generan carta ni mensaje para evitar gasto de recursos.
+- Las vacantes descartadas se marcan con `ignorar_en_futuro=si` y sus URLs se guardan localmente para saltarlas en siguientes corridas.
+
+## Cache local
+
+- Carpeta: `cache/`
+- Contenido: HTML bruto y `ignored_urls.json`
+- TTL por defecto: 120 horas
+- Git: `cache/` esta ignorado
+
+El cache reduce llamadas repetidas a portales. Si necesitas volver a descargar todo, usa `--refresh-cache`.
 
 ## Futuras implementaciones
 

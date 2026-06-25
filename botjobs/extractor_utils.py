@@ -5,6 +5,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlparse
 
+from .cache import DEFAULT_TTL_HOURS, read_cached_html, write_cached_html
 from .utils import clean_text
 
 
@@ -13,6 +14,17 @@ BLOCK_PATTERNS = {
     "login_requerido": ("sign in", "iniciar sesion", "inicia sesion", "login", "log in"),
     "bloqueado": ("access denied", "forbidden", "too many requests", "unusual traffic"),
 }
+
+CACHE_ENABLED = True
+CACHE_TTL_HOURS = DEFAULT_TTL_HOURS
+REFRESH_CACHE = False
+
+
+def configure_cache(enabled=True, ttl_hours=DEFAULT_TTL_HOURS, refresh=False):
+    global CACHE_ENABLED, CACHE_TTL_HOURS, REFRESH_CACHE
+    CACHE_ENABLED = enabled
+    CACHE_TTL_HOURS = ttl_hours
+    REFRESH_CACHE = refresh
 
 
 def infer_portal(url):
@@ -31,6 +43,11 @@ def infer_portal(url):
 
 
 def fetch_html(url, timeout=20):
+    if CACHE_ENABLED and not REFRESH_CACHE:
+        cached = read_cached_html(url, ttl_hours=CACHE_TTL_HOURS)
+        if cached is not None:
+            return cached
+
     request = urllib.request.Request(
         url,
         headers={
@@ -45,7 +62,10 @@ def fetch_html(url, timeout=20):
     match = re.search(r"charset=([\w-]+)", content_type)
     if match:
         encoding = match.group(1)
-    return raw.decode(encoding, errors="ignore")
+    markup = raw.decode(encoding, errors="ignore")
+    if CACHE_ENABLED:
+        write_cached_html(url, markup)
+    return markup
 
 
 def html_to_text(markup):
