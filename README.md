@@ -27,10 +27,12 @@ Entrada:
 Salida:
 
 - `output/botjobs_resultados.xlsx`
+  - `resumen_ejecucion`
   - `vacantes_detectadas`
   - `preseleccionadas`
   - `descartadas`
   - `aplicadas`
+  - `requiere_intervencion`
   - `empresas_investigadas`
 - `output/cartas/*.md`: carta personalizada por vacante.
 
@@ -119,10 +121,10 @@ Estado actual: `--auto-search` usa paginas de resultados publicas y extrae links
 5. Implementar extractores por portal, uno por uno: Indeed, Computrabajo, OCC, Glassdoor y LinkedIn. Estado: implementacion inicial completa para links de vacantes.
 6. Crear modo `--auto-search` para buscar vacantes automaticamente en los portales soportados. Estado: implementado en version inicial.
 7. Agregar cache local de HTML/texto extraido para evitar repetir navegacion innecesaria. Estado: implementado con HTML bruto, TTL de 120 horas y `--refresh-cache`.
-8. Registrar estados de extraccion: `ok`, `captcha`, `login_requerido`, `bloqueado`, `estructura_no_reconocida`, `sin_descripcion` y `error_red`.
-9. Mejorar ranking con datos reales: industria, seniority, salario, modalidad, spam y trabajos por proyecto.
-10. Generar workbook operativo con hojas de detectadas, preseleccionadas, descartadas, requiere intervencion, empresas investigadas y aplicadas.
-11. Agregar reporte de ejecucion con conteos de detectadas, extraidas, preseleccionadas, descartadas, intervenciones y cartas.
+8. Registrar estados de extraccion: `ok`, `captcha`, `login_requerido`, `bloqueado`, `estructura_no_reconocida`, `sin_descripcion` y `error_red`. Estado: implementado con `cache_hit`, `motivo_intervencion`, `accion_recomendada` y hoja `requiere_intervencion`.
+9. Mejorar ranking con datos reales: industria, seniority, salario, modalidad, spam y trabajos por proyecto. Estado: implementado con inferencias desde titulo/descripcion.
+10. Generar workbook operativo con hojas de detectadas, preseleccionadas, descartadas, requiere intervencion, empresas investigadas y aplicadas. Estado: implementado con `resumen_ejecucion`, filtros, formato por hoja y conteos operativos.
+11. Agregar reporte de ejecucion con conteos de detectadas, extraidas, preseleccionadas, descartadas, intervenciones y cartas. Estado: implementado en salida CLI.
 12. Probar primero con Indeed en una busqueda pequena de maximo 10 resultados.
 13. Expandir portal por portal sin agregar uno nuevo hasta que el anterior extraiga y falle de forma controlada.
 14. Mantener README actualizado con estado real de soporte por portal y comandos disponibles.
@@ -146,6 +148,9 @@ Todas las fuentes deben transformarse a estos campos antes de rankear o generar 
 - `requiere_intervencion`
 - `estado_extraccion`
 - `ignorar_en_futuro`
+- `cache_hit`
+- `motivo_intervencion`
+- `accion_recomendada`
 - `horas_semana`
 - `seniority`
 - `idioma`
@@ -203,6 +208,7 @@ Ese archivo no se versiona y esta incluido en `.gitignore`.
 - Fase 1A no auto-aplica. Prepara compendio, ranking, investigacion y cartas.
 - Las vacantes con `estado=descartada` no generan carta ni mensaje para evitar gasto de recursos.
 - Las vacantes descartadas se marcan con `ignorar_en_futuro=si` y sus URLs se guardan localmente para saltarlas en siguientes corridas.
+- El ranking infiere industria, modalidad, seniority, salario y horas desde titulo/descripcion cuando el portal no entrega esos campos.
 
 ## Cache local
 

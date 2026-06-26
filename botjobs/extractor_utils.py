@@ -18,6 +18,7 @@ BLOCK_PATTERNS = {
 CACHE_ENABLED = True
 CACHE_TTL_HOURS = DEFAULT_TTL_HOURS
 REFRESH_CACHE = False
+LAST_CACHE_HITS = {}
 
 
 def configure_cache(enabled=True, ttl_hours=DEFAULT_TTL_HOURS, refresh=False):
@@ -46,6 +47,7 @@ def fetch_html(url, timeout=20):
     if CACHE_ENABLED and not REFRESH_CACHE:
         cached = read_cached_html(url, ttl_hours=CACHE_TTL_HOURS)
         if cached is not None:
+            LAST_CACHE_HITS[clean_text(url)] = "si"
             return cached
 
     request = urllib.request.Request(
@@ -65,7 +67,12 @@ def fetch_html(url, timeout=20):
     markup = raw.decode(encoding, errors="ignore")
     if CACHE_ENABLED:
         write_cached_html(url, markup)
+    LAST_CACHE_HITS[clean_text(url)] = "no"
     return markup
+
+
+def cache_hit_for(url):
+    return LAST_CACHE_HITS.get(clean_text(url), "no")
 
 
 def html_to_text(markup):

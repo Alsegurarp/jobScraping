@@ -3,10 +3,12 @@ from .utils import clean_text
 
 INPUT_SHEET = "vacantes"
 OUTPUT_SHEETS = [
+    "resumen_ejecucion",
     "vacantes_detectadas",
     "preseleccionadas",
     "descartadas",
     "aplicadas",
+    "requiere_intervencion",
     "empresas_investigadas",
 ]
 
@@ -26,6 +28,9 @@ INPUT_COLUMNS = [
     "requiere_intervencion",
     "estado_extraccion",
     "ignorar_en_futuro",
+    "cache_hit",
+    "motivo_intervencion",
+    "accion_recomendada",
     "horas_semana",
     "seniority",
     "idioma",
@@ -59,6 +64,9 @@ RESULT_COLUMNS = [
     "requiere_intervencion",
     "estado_extraccion",
     "ignorar_en_futuro",
+    "cache_hit",
+    "motivo_intervencion",
+    "accion_recomendada",
     "documento_que_se_manda",
     "carta_de_interes_al_rol",
     "mensaje_corto_reclutador",
@@ -74,6 +82,11 @@ RESEARCH_COLUMNS = [
     "fecha_investigacion",
 ]
 
+SUMMARY_COLUMNS = [
+    "metrica",
+    "valor",
+]
+
 
 def normalize_job_row(row, source="xlsx"):
     normalized = {column: "" for column in JOB_CONTRACT_COLUMNS}
@@ -86,4 +99,7 @@ def normalize_job_row(row, source="xlsx"):
     normalized["requiere_intervencion"] = clean_text(normalized.get("requiere_intervencion")) or "no"
     normalized["estado_extraccion"] = clean_text(normalized.get("estado_extraccion")) or "pendiente"
     normalized["ignorar_en_futuro"] = clean_text(normalized.get("ignorar_en_futuro")) or "no"
+    normalized["cache_hit"] = clean_text(normalized.get("cache_hit")) or "no"
+    normalized["motivo_intervencion"] = clean_text(normalized.get("motivo_intervencion"))
+    normalized["accion_recomendada"] = clean_text(normalized.get("accion_recomendada"))
     return normalized

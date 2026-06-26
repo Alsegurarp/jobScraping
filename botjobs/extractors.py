@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from .browser import extract_with_browser
 from .extractor_utils import (
     detect_block,
+    cache_hit_for,
     fetch_html,
     first_email,
     html_to_text,
@@ -19,6 +20,24 @@ from .portals.linkedin import extract_from_markup as extract_linkedin_markup
 from .portals.occ import extract_from_markup as extract_occ_markup
 from .schema import normalize_job_row
 from .utils import clean_text
+
+
+FORCE_UPDATE_FIELDS = {
+    "fuente_extraccion",
+    "requiere_intervencion",
+    "estado_extraccion",
+    "cache_hit",
+    "motivo_intervencion",
+    "accion_recomendada",
+}
+
+
+def merge_extraction(row, updates):
+    merged = merge_if_empty(row, updates)
+    for key in FORCE_UPDATE_FIELDS:
+        if key in updates and clean_text(updates.get(key)):
+            merged[key] = updates[key]
+    return merged
 
 
 def portal_updates(row, markup):
@@ -54,6 +73,7 @@ def generic_updates(row, markup):
         "fuente_extraccion": "link",
         "estado_extraccion": block_status or ("ok" if description else "sin_descripcion"),
         "requiere_intervencion": "si" if block_status in {"captcha", "login_requerido", "bloqueado"} else "no",
+        "cache_hit": cache_hit_for(url),
     }
     return updates
 
@@ -65,6 +85,7 @@ def extraction_error(row, url, status, description, intervention="no"):
         "fuente_extraccion": "link",
         "estado_extraccion": status,
         "requiere_intervencion": intervention,
+        "cache_hit": cache_hit_for(url),
         "descripcion": clean_text(row.get("descripcion")) or description,
     }, source="link")
 
@@ -83,7 +104,8 @@ def extract_link(row):
         return extraction_error(row, url, "error_red", f"No se pudo abrir el link: {exc}")
 
     updates = portal_updates(row, markup)
-    return normalize_job_row(merge_if_empty(row, updates), source="link")
+    updates["cache_hit"] = cache_hit_for(url)
+    return normalize_job_row(merge_extraction(row, updates), source="link")
 
 
 def extract_links(rows, use_browser=False):

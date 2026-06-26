@@ -5,6 +5,24 @@ from email.utils import parsedate_to_datetime
 from .utils import clean_text, words
 
 
+INDUSTRY_KEYWORDS = {
+    "fintech": ("fintech", "financial technology", "banco", "banking", "pagos", "payments"),
+    "SaaS": ("saas", "software as a service", "b2b software", "plataforma cloud"),
+    "e-commerce": ("e-commerce", "ecommerce", "marketplace", "retail online", "tienda en linea", "tienda en línea"),
+    "logistica": ("logistica", "logística", "supply chain", "paqueteria", "paquetería", "envios", "envíos"),
+    "consultoria": ("consultoria", "consultoría", "consulting", "consultora", "staff augmentation"),
+    "seguridad": ("seguridad privada", "security guard", "guardia", "vigilancia", "cctv"),
+    "viajes": ("viajes", "travel", "turismo", "hotel", "agencia de viajes"),
+}
+
+SENIORITY_HIGH_TERMS = (
+    "senior", "sr.", "sr ", "lead", "principal", "staff", "architect",
+    "arquitecto", "tech lead", "manager", "gerente",
+)
+
+SENIORITY_JUNIOR_TERMS = ("junior", "jr", "jr.", "trainee", "entry level", "intern", "becario")
+
+
 def parse_date(value):
     if isinstance(value, datetime):
         return value.date()
@@ -39,6 +57,91 @@ def parse_money_mxn(value):
     return amount
 
 
+def text_blob(row):
+    return " ".join(clean_text(value) for value in row.values()).lower()
+
+
+def infer_industry(row):
+    current = clean_text(row.get("industria_detectada"))
+    if current:
+        return current
+    text = text_blob(row)
+    for industry, terms in INDUSTRY_KEYWORDS.items():
+        if any(term in text for term in terms):
+            return industry
+    return ""
+
+
+def infer_modality(row):
+    current = clean_text(row.get("modalidad"))
+    if current:
+        return current
+    if is_remote(row):
+        return "remoto"
+    if is_hybrid(row):
+        return "hibrido"
+    return ""
+
+
+def infer_seniority(row):
+    current = clean_text(row.get("seniority"))
+    if current:
+        return current
+    text = " ".join([clean_text(row.get("titulo")), clean_text(row.get("descripcion"))]).lower()
+    if any(term in text for term in SENIORITY_HIGH_TERMS):
+        return "Senior"
+    if any(term in text for term in SENIORITY_JUNIOR_TERMS):
+        return "Junior"
+    return ""
+
+
+def infer_hours(row):
+    current = clean_text(row.get("horas_semana"))
+    if current:
+        return current
+    text = text_blob(row)
+    patterns = [
+        r"(\d{2})\s*(?:horas|hrs|hours)\s*(?:a la semana|por semana|weekly|week)",
+        r"(?:semana|weekly|week)\D{0,12}(\d{2})\s*(?:horas|hrs|hours)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1)
+    if "tiempo completo" in text or "full time" in text or "full-time" in text:
+        return "40"
+    return ""
+
+
+def infer_salary(row):
+    current = clean_text(row.get("salario"))
+    if current:
+        return current
+    text = text_blob(row)
+    pattern = r"(?:(?:mxn|mx\$|\$)\s*)?(\d{2,3}[,\d]{3,})(?:\s*[-a]\s*(?:(?:mxn|mx\$|\$)\s*)?(\d{2,3}[,\d]{3,}))?\s*(?:mxn|pesos|mensuales|mes|monthly)?"
+    match = re.search(pattern, text)
+    if match:
+        if match.group(2):
+            return f"{match.group(1)}-{match.group(2)} MXN"
+        return f"{match.group(1)} MXN"
+    usd = re.search(r"(?:usd|\$)\s*(\d{3,5})(?:\s*[-a]\s*(\d{3,5}))?\s*(?:usd|dolares|dólares|monthly|mes)?", text)
+    if usd:
+        if usd.group(2):
+            return f"{usd.group(1)}-{usd.group(2)} USD"
+        return f"{usd.group(1)} USD"
+    return ""
+
+
+def enrich_row(row):
+    enriched = dict(row)
+    enriched["industria_detectada"] = infer_industry(enriched)
+    enriched["modalidad"] = infer_modality(enriched)
+    enriched["seniority"] = infer_seniority(enriched)
+    enriched["horas_semana"] = infer_hours(enriched)
+    enriched["salario"] = infer_salary(enriched)
+    return enriched
+
+
 def is_remote(row):
     text = " ".join(clean_text(row.get(key)) for key in ("modalidad", "ubicacion", "descripcion")).lower()
     return any(term in text for term in ("remoto", "remote", "home office", "work from home"))
@@ -63,9 +166,9 @@ def mentions_project_work(text):
 
 
 def quality_flags(profile, row, matched_skills):
-    text = " ".join(clean_text(value) for value in row.values()).lower()
+    text = text_blob(row)
     flags = []
-    industry = clean_text(row.get("industria_detectada")).lower()
+    industry = infer_industry(row).lower()
 
     allowed_industries = [item.lower() for item in profile.get("allowed_industries", [])]
     blocked_industries = [item.lower() for item in profile.get("blocked_industries", [])]
@@ -91,7 +194,7 @@ def quality_flags(profile, row, matched_skills):
         flags.append("hibrido_fuera_cdmx")
 
     seniority = " ".join([clean_text(row.get("seniority")), clean_text(row.get("titulo"))]).lower()
-    if any(term in seniority for term in ("senior", "sr.", "lead", "principal", "staff")):
+    if any(term in seniority for term in SENIORITY_HIGH_TERMS):
         flags.append("seniority_alto")
 
     salary = parse_money_mxn(row.get("salario"))
@@ -101,7 +204,12 @@ def quality_flags(profile, row, matched_skills):
     if len(matched_skills) < profile.get("minimum_skill_matches", 5):
         flags.append("menos_de_5_skills")
 
-    spam_terms = ("multinivel", "sin experiencia gana", "pago inicial", "curso obligatorio", "deposito", "inversion inicial")
+    spam_terms = (
+        "multinivel", "sin experiencia gana", "pago inicial", "curso obligatorio",
+        "deposito", "depósito", "inversion inicial", "inversión inicial",
+        "gana dinero desde casa", "no necesitas experiencia", "whatsapp para entrevista",
+        "capacitacion pagada por el candidato", "capacitación pagada por el candidato",
+    )
     if any(term in text for term in spam_terms):
         flags.append("posible_spam")
 
@@ -109,6 +217,7 @@ def quality_flags(profile, row, matched_skills):
 
 
 def score_job(profile, row):
+    row = enrich_row(row)
     text = " ".join(clean_text(value) for value in row.values())
     job_terms = words(text)
     matched_skills = sorted(profile["skill_terms"] & job_terms)
@@ -132,7 +241,7 @@ def score_job(profile, row):
         score += 8
     elif in_cdmx(row):
         score += 5
-    if any(term in " ".join([clean_text(row.get("seniority")), clean_text(row.get("titulo"))]).lower() for term in ("junior", "jr", "trainee")):
+    if any(term in " ".join([clean_text(row.get("seniority")), clean_text(row.get("titulo"))]).lower() for term in SENIORITY_JUNIOR_TERMS):
         score += 12
     score += min(len(matched_skills) * 3, 15)
     score += min(len(matched_interests) * 2, 5)

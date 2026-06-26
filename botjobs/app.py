@@ -7,15 +7,47 @@ from .extractors import extract_links
 from .extractor_utils import configure_cache
 from .letters import cover_letter, recruiter_message
 from .profile import load_profile
-from .ranking import detect_language, parse_date, score_job, short_reason
+from .ranking import detect_language, enrich_row, parse_date, score_job, short_reason
 from .research import research_company
 from .search import auto_search
 from .utils import clean_text, slug
 from .workbook import create_template, read_sheet, write_output
 
 
+def execution_summary(output_path, detected, shortlisted, discarded, intervention_rows):
+    extracted_ok = sum(1 for row in detected if clean_text(row.get("estado_extraccion")) == "ok")
+    cache_hits = sum(1 for row in detected if clean_text(row.get("cache_hit")).lower() == "si")
+    ignored = sum(1 for row in detected if clean_text(row.get("ignorar_en_futuro")).lower() == "si")
+    letters = sum(1 for row in shortlisted if clean_text(row.get("carta_de_interes_al_rol")))
+    return {
+        "output_path": str(output_path),
+        "detectadas": len(detected),
+        "extraidas_ok": extracted_ok,
+        "preseleccionadas": len(shortlisted),
+        "descartadas": len(discarded),
+        "intervenciones": len(intervention_rows),
+        "cartas_generadas": letters,
+        "cache_hits": cache_hits,
+        "ignoradas": ignored,
+    }
+
+
+def print_execution_report(summary):
+    print(f"Listo: {summary['output_path']}")
+    print("Reporte:")
+    print(f"- Detectadas: {summary['detectadas']}")
+    print(f"- Extraidas correctamente: {summary['extraidas_ok']}")
+    print(f"- Preseleccionadas: {summary['preseleccionadas']}")
+    print(f"- Descartadas: {summary['descartadas']}")
+    print(f"- Requieren intervencion: {summary['intervenciones']}")
+    print(f"- Cartas generadas: {summary['cartas_generadas']}")
+    print(f"- Cache hits: {summary['cache_hits']}")
+    print(f"- Ignoradas en futuro: {summary['ignoradas']}")
+
+
 def result_row(profile, row, score, status, matched_skills, flags, letter_path="", message=""):
     ignore_future = "si" if status == "descartada" else clean_text(row.get("ignorar_en_futuro")) or "no"
+    motivo, accion = intervention_guidance(row, status, flags)
     return {
         "prioridad": "",
         "score": score,
@@ -36,6 +68,9 @@ def result_row(profile, row, score, status, matched_skills, flags, letter_path="
         "requiere_intervencion": clean_text(row.get("requiere_intervencion")),
         "estado_extraccion": clean_text(row.get("estado_extraccion")),
         "ignorar_en_futuro": ignore_future,
+        "cache_hit": clean_text(row.get("cache_hit")),
+        "motivo_intervencion": motivo,
+        "accion_recomendada": accion,
         "documento_que_se_manda": profile.get("cv_file", "Rene_Alexis_Segura_CV.pdf"),
         "carta_de_interes_al_rol": str(letter_path) if letter_path else "",
         "mensaje_corto_reclutador": message,
@@ -43,6 +78,34 @@ def result_row(profile, row, score, status, matched_skills, flags, letter_path="
         "matched_skills": ", ".join(matched_skills),
         "flags": ", ".join(flags),
     }
+
+
+def intervention_guidance(row, status, flags):
+    extraction = clean_text(row.get("estado_extraccion"))
+    requires = clean_text(row.get("requiere_intervencion")).lower() == "si"
+    ignored = clean_text(row.get("ignorar_en_futuro")).lower() == "si"
+
+    if ignored or extraction == "ignorada_previamente":
+        return "Vacante descartada previamente.", "Ignorar, ya fue descartada."
+    if extraction == "captcha":
+        return "El portal mostro captcha o verificacion humana.", "Abrir manualmente y resolver captcha."
+    if extraction == "login_requerido":
+        return "El portal requiere inicio de sesion.", "Abrir manualmente e iniciar sesion."
+    if extraction == "bloqueado":
+        return "El portal bloqueo la extraccion automatica.", "Reintentar con --browser o revisar manualmente."
+    if extraction == "navegador_bloqueado":
+        return "El entorno no permitio abrir Chrome/Edge.", "Ejecutar desde PowerShell local normal."
+    if extraction == "sin_descripcion":
+        return "No se pudo extraer descripcion.", "Revisar link o ajustar extractor del portal."
+    if extraction == "error_red":
+        return "Error de red al abrir la pagina.", "Reintentar luego o usar --refresh-cache."
+    if extraction == "estructura_no_reconocida":
+        return "La pagina cambio estructura o no coincide con el extractor.", "Ajustar extractor del portal."
+    if requires:
+        return "La vacante requiere intervencion manual.", "Revisar manualmente."
+    if status == "descartada" and flags:
+        return "Descartada por filtros del perfil.", "Ignorar salvo que quieras revisar excepcion."
+    return "", ""
 
 
 def run(
@@ -83,10 +146,12 @@ def run(
     detected = []
     shortlisted = []
     discarded = []
+    intervention_rows = []
     research_by_company = {}
     cutoff = date.today() - timedelta(days=profile.get("max_post_age_days", 14))
 
     for row in rows:
+        row = enrich_row(row)
         posted = parse_date(row.get("fecha_publicacion"))
         if posted and posted < cutoff:
             row = {**row, "descripcion": f"{clean_text(row.get('descripcion'))} vacante_mayor_a_2_semanas"}
@@ -110,6 +175,8 @@ def run(
 
         result = result_row(profile, row, score, status, matched_skills, flags, letter_path, message)
         detected.append(result)
+        if clean_text(result.get("requiere_intervencion")).lower() == "si" or clean_text(result.get("motivo_intervencion")):
+            intervention_rows.append(result)
         if status == "preseleccionada":
             shortlisted.append(result)
         else:
@@ -126,15 +193,16 @@ def run(
         item["prioridad"] = item["prioridad"] or index
 
     output_path = output_dir / "botjobs_resultados.xlsx"
-    return write_output(output_path, detected, shortlisted, discarded, [], list(research_by_company.values()))
+    saved_path = write_output(output_path, detected, shortlisted, discarded, [], intervention_rows, list(research_by_company.values()))
+    return saved_path, execution_summary(saved_path, detected, shortlisted, discarded, intervention_rows)
 
 
 def demo():
     template = Path("vacantes.template.xlsx")
     if not template.exists():
         create_template(template)
-    output_path = run(Path("profile.example.json"), template, Path("output"), research_enabled=False)
-    print(f"Demo ok: {output_path}")
+    _output_path, summary = run(Path("profile.example.json"), template, Path("output"), research_enabled=False)
+    print_execution_report(summary)
 
 
 def main():
@@ -166,7 +234,7 @@ def main():
         parser.error("--browser requiere --extract-links o --auto-search")
 
     portal_names = [item.strip() for item in args.portals.split(",") if item.strip()]
-    output_path = run(
+    _output_path, summary = run(
         Path(args.profile),
         Path(args.jobs),
         Path(args.out),
@@ -179,4 +247,4 @@ def main():
         args.refresh_cache,
         args.cache_ttl_hours,
     )
-    print(f"Listo: {output_path}")
+    print_execution_report(summary)
