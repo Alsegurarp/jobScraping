@@ -88,3 +88,29 @@ def extract_with_browser(row, timeout_ms=30000):
         updates["descripcion"] = f"No se pudo extraer con navegador: {payload.get('error', 'error desconocido')}"
 
     return normalize_job_row({**row, **updates}, source="browser")
+
+
+def fetch_html_with_browser(url, timeout_ms=30000):
+    command = [node_command(), str(SCRIPT), clean_text(url), str(timeout_ms)]
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=(timeout_ms / 1000) + 10,
+            env=node_env(),
+        )
+    except Exception as exc:
+        raise RuntimeError(f"No se pudo iniciar navegador: {exc}") from exc
+
+    try:
+        payload = json.loads((completed.stdout or "").strip().splitlines()[-1])
+    except Exception as exc:
+        output = (completed.stderr or completed.stdout or "sin salida del navegador").strip()
+        raise RuntimeError(output) from exc
+
+    if not payload.get("ok"):
+        raise RuntimeError(payload.get("error") or payload.get("estado_extraccion") or "error_navegador")
+    return payload.get("html") or ""

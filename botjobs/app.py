@@ -46,7 +46,10 @@ def print_execution_report(summary):
 
 
 def result_row(profile, row, score, status, matched_skills, flags, letter_path="", message=""):
-    ignore_future = "si" if status == "descartada" else clean_text(row.get("ignorar_en_futuro")) or "no"
+    requires_intervention = clean_text(row.get("requiere_intervencion")).lower() == "si"
+    ignore_future = "si" if status == "descartada" and not requires_intervention else clean_text(row.get("ignorar_en_futuro")) or "no"
+    if requires_intervention:
+        ignore_future = "no"
     motivo, accion = intervention_guidance(row, status, flags)
     return {
         "prioridad": "",
@@ -125,13 +128,13 @@ def run(
     profile = load_profile(profile_path)
     ignored_urls = load_ignored_urls()
     if auto_search_enabled:
-        rows = auto_search(profile, max_results=max_results, portal_names=portal_names)
+        rows = auto_search(profile, max_results=max_results, portal_names=portal_names, use_browser=browser_enabled)
         extract_links_enabled = True
     else:
         rows = read_sheet(jobs_path)
     rows = [
         {**row, "ignorar_en_futuro": "si", "estado_extraccion": "ignorada_previamente"}
-        if clean_text(row.get("url")) in ignored_urls
+        if clean_text(row.get("url")) in ignored_urls and clean_text(row.get("fuente_extraccion")) != "auto_search"
         else row
         for row in rows
     ]

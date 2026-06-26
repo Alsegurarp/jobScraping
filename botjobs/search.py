@@ -45,7 +45,7 @@ PORTALS = {
         name="Glassdoor",
         host_patterns=("glassdoor.",),
         url_template="https://www.glassdoor.com.mx/Empleo/jobs.htm?sc.keyword={query}&locT=C&locId=1152420&fromAge=14",
-        job_path_patterns=("/partner/jobListing.htm", "/Job/", "/job-listing/"),
+        job_path_patterns=("/partner/jobListing.htm", "/job-listing/"),
     ),
 }
 
@@ -116,6 +116,8 @@ def matches_portal(url, portal):
 def looks_like_job_url(url, portal):
     parsed = urlparse(url)
     path = parsed.path.lower()
+    if portal.name in {"Glassdoor", "LinkedIn"}:
+        return any(pattern.lower() in path for pattern in portal.job_path_patterns)
     if any(pattern.lower() in path for pattern in portal.job_path_patterns):
         return True
     return any(token in path for token in ("job", "empleo", "oferta", "vacante"))
@@ -156,15 +158,42 @@ def dedupe_rows(rows, max_results):
     return unique
 
 
-def auto_search(profile, max_results=25, portal_names=None):
+def search_error_row(portal, term, location, search_url, error):
+    error_text = clean_text(error)
+    estado = "bloqueado" if "403" in error_text or "forbidden" in error_text.lower() else "error_red"
+    if "spawn eperm" in error_text.lower():
+        estado = "navegador_bloqueado"
+    return normalize_job_row({
+        "titulo": f"Busqueda {portal.name}: {term} ({location})",
+        "empresa": "",
+        "portal": portal.name,
+        "url": search_url,
+        "descripcion": f"No se pudo consultar pagina de busqueda: {error_text}",
+        "ubicacion": location,
+        "modalidad": "remoto" if location.lower() == "remoto" else "",
+        "fuente_extraccion": "auto_search",
+        "estado_extraccion": estado,
+        "requiere_intervencion": "si",
+    }, source="auto_search")
+
+
+def auto_search(profile, max_results=25, portal_names=None, use_browser=False):
+    if use_browser:
+        from .browser import fetch_html_with_browser
+
     portals = selected_portals(portal_names)
     found = []
     for portal, term, location, search_url in build_search_urls(profile, portals):
         if len(found) >= max_results:
             break
         try:
-            markup = fetch_html(search_url, timeout=20)
-        except Exception:
+            if use_browser:
+                markup = fetch_html_with_browser(search_url, timeout_ms=30000)
+            else:
+                markup = fetch_html(search_url, timeout=20)
+        except Exception as exc:
+            found.append(search_error_row(portal, term, location, search_url, exc))
+            found = dedupe_rows(found, max_results)
             continue
         found.extend(result_rows_from_markup(markup, search_url, portal, term, location))
         found = dedupe_rows(found, max_results)

@@ -164,20 +164,32 @@ def organization_name(value):
     return clean_text(value)
 
 
+def json_value_text(value):
+    if isinstance(value, dict):
+        for key in ("name", "addressLocality", "addressRegion", "addressCountry", "value"):
+            text = json_value_text(value.get(key))
+            if text:
+                return text
+        return clean_text(" ".join(json_value_text(item) for item in value.values()))
+    if isinstance(value, list):
+        return clean_text("; ".join(json_value_text(item) for item in value))
+    return clean_text(value)
+
+
 def location_text(value):
     if isinstance(value, dict):
         address = value.get("address", {})
         if isinstance(address, dict):
             parts = [
-                address.get("addressLocality"),
-                address.get("addressRegion"),
-                address.get("addressCountry"),
+                json_value_text(address.get("addressLocality")),
+                json_value_text(address.get("addressRegion")),
+                json_value_text(address.get("addressCountry")),
             ]
             return clean_text(", ".join(part for part in parts if part))
-        return clean_text(address)
+        return json_value_text(address)
     if isinstance(value, list):
         return clean_text("; ".join(location_text(item) for item in value))
-    return clean_text(value)
+    return json_value_text(value)
 
 
 def salary_text(value):

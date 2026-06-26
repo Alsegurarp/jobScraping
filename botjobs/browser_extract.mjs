@@ -62,6 +62,7 @@ async function main() {
     await page.waitForTimeout(1200);
 
     const title = await page.title().catch(() => "");
+    const pageHtml = await page.content().catch(() => "");
     const bodyText = await page.locator("body").innerText({ timeout: 5000 }).catch(() => "");
     const description =
       (await meta(page, "meta[name='description']")) ||
@@ -74,6 +75,7 @@ async function main() {
       ok: true,
       http_status: response ? response.status() : "",
       titulo: title,
+      html: pageHtml,
       descripcion: description,
       email_contacto: emailMatch ? emailMatch[0] : "",
       estado_extraccion: blockStatus || (description ? "ok" : "sin_descripcion"),

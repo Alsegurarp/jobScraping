@@ -17,6 +17,8 @@ Si un portal presenta login, captcha, verificacion humana o bloqueo normal de pl
 
 ## Fase actual
 
+Fase actual: compendio local operativo. El sistema ya busca, extrae, rankea, registra intervenciones y genera cartas solo para vacantes preseleccionadas. No aplica a vacantes ni envia correos.
+
 Entrada:
 
 - Busqueda automatica en Indeed, LinkedIn, OCC, Computrabajo y Glassdoor.
@@ -35,6 +37,33 @@ Salida:
   - `requiere_intervencion`
   - `empresas_investigadas`
 - `output/cartas/*.md`: carta personalizada por vacante.
+
+## Estado operativo actual
+
+Implementado:
+
+- CLI local con `--auto-search`, `--extract-links`, `--browser`, `--research`, `--refresh-cache`, `--portals` y `--max-results`.
+- Busqueda automatica inicial en Indeed, LinkedIn, OCC, Computrabajo y Glassdoor.
+- Seleccion declarativa de portales con `--portals indeed,linkedin,occ,computrabajo,glassdoor`.
+- Extraccion desde links pegados manualmente en `.xlsx`.
+- Extraccion con HTML directo y modo navegador automatizado para paginas que requieren renderizado.
+- Deteccion controlada de `captcha`, `login_requerido`, `bloqueado`, `navegador_bloqueado`, `estructura_no_reconocida`, `sin_descripcion` y `error_red`.
+- Cache local de HTML bruto con TTL de 120 horas.
+- Memoria local de vacantes descartadas mediante `cache/ignored_urls.json`.
+- Workbook `.xlsx` con resumen, vacantes detectadas, preseleccionadas, descartadas, aplicadas, intervenciones y empresas investigadas.
+- Cartas `.md` y mensajes cortos solo para vacantes `preseleccionada`.
+- Ranking por industria, salario, horario, remoto, ubicacion, seniority y skills.
+- Filtros para no generar cartas de vacantes descartadas.
+
+Limitaciones actuales:
+
+- El sistema no resuelve captchas, logins ni verificaciones humanas.
+- Algunos portales bloquean busquedas o detalles; esos casos quedan en `requiere_intervencion`.
+- La investigacion de empresa es basica y no usa IA.
+- Las cartas usan plantillas simples, no redaccion inteligente con modelo de lenguaje.
+- El Excel local no se sincroniza automaticamente con Google Sheets.
+- No hay validacion visual automatica del Excel subido.
+- No aplica a vacantes ni envia correos.
 
 ## Crear plantilla
 
@@ -126,8 +155,8 @@ Estado actual: `--auto-search` usa paginas de resultados publicas y extrae links
 10. Generar workbook operativo con hojas de detectadas, preseleccionadas, descartadas, requiere intervencion, empresas investigadas y aplicadas. Estado: implementado con `resumen_ejecucion`, filtros, formato por hoja y conteos operativos.
 11. Agregar reporte de ejecucion con conteos de detectadas, extraidas, preseleccionadas, descartadas, intervenciones y cartas. Estado: implementado en salida CLI.
 12. Probar primero con Indeed en una busqueda pequena de maximo 10 resultados.
-13. Expandir portal por portal sin agregar uno nuevo hasta que el anterior extraiga y falle de forma controlada.
-14. Mantener README actualizado con estado real de soporte por portal y comandos disponibles.
+13. Expandir portal por portal sin agregar uno nuevo hasta que el anterior extraiga y falle de forma controlada. Estado: completada la primera ronda de validacion para Indeed, OCC, Computrabajo, Glassdoor y LinkedIn.
+14. Mantener README actualizado con estado real de soporte por portal y comandos disponibles. Estado: implementado como seccion de estado operativo, soporte por portal e integraciones futuras.
 
 ## Contrato de datos de vacante
 
@@ -177,11 +206,11 @@ Todas las fuentes deben transformarse a estos campos antes de rankear o generar 
 
 ## Soporte por portal
 
-- Indeed: extractor inicial para links de vacantes.
-- Computrabajo: extractor inicial para links de vacantes.
-- OCC: extractor inicial para links de vacantes.
-- Glassdoor: extractor inicial para links de vacantes.
-- LinkedIn: extractor inicial para links de vacantes.
+- Indeed: extractor inicial para links de vacantes; puede encontrar candidatos, pero algunas paginas de detalle bloquean y quedan en intervencion.
+- Computrabajo: extractor inicial para links de vacantes; la busqueda publica puede bloquear y queda registrada como intervencion.
+- OCC: extractor inicial para links de vacantes; la busqueda publica puede responder HTTP 403 y queda registrada como intervencion.
+- Glassdoor: extractor inicial para links de vacantes; filtra `job-listing` y `partner/jobListing` para evitar paginas de navegacion.
+- LinkedIn: extractor inicial para links de vacantes; filtra `/jobs/view` para evitar links internos de busqueda.
 
 Todos los extractores intentan leer JSON-LD `JobPosting`, titulo, empresa, ubicacion, salario, fecha, descripcion y correo visible. Si el portal no expone esos datos o bloquea la pagina, el flujo cae a metadatos/texto visible o marca `estado_extraccion`.
 
@@ -208,6 +237,7 @@ Ese archivo no se versiona y esta incluido en `.gitignore`.
 - Fase 1A no auto-aplica. Prepara compendio, ranking, investigacion y cartas.
 - Las vacantes con `estado=descartada` no generan carta ni mensaje para evitar gasto de recursos.
 - Las vacantes descartadas se marcan con `ignorar_en_futuro=si` y sus URLs se guardan localmente para saltarlas en siguientes corridas.
+- Las busquedas bloqueadas por portal o filas que requieren intervencion manual no se marcan como `ignorar_en_futuro`, aunque queden descartadas por filtros. Deben poder reintentarse con `--browser` o revisarse manualmente.
 - El ranking infiere industria, modalidad, seniority, salario y horas desde titulo/descripcion cuando el portal no entrega esos campos.
 
 ## Cache local
@@ -219,10 +249,49 @@ Ese archivo no se versiona y esta incluido en `.gitignore`.
 
 El cache reduce llamadas repetidas a portales. Si necesitas volver a descargar todo, usa `--refresh-cache`.
 
+## Estado real por portal en auto-search
+
+- Indeed: encuentra links candidatos, pero algunas paginas de detalle pueden bloquear y quedar en `requiere_intervencion`.
+- OCC: la busqueda publica puede responder con bloqueo HTTP 403. El bot genera filas de intervencion con `estado_extraccion=bloqueado`, `requiere_intervencion=si` e `ignorar_en_futuro=no`.
+- Computrabajo: la busqueda publica puede responder con bloqueo. El bot lo registra como intervencion y no lo agrega a ignoradas permanentes.
+- Glassdoor: extrae ofertas reales desde `job-listing` y `partner/jobListing`; el filtro evita links de navegacion como paginas de busqueda o menus.
+- LinkedIn: extrae ofertas reales desde `/jobs/view`; el filtro evita links internos de busqueda como `#main-content`.
+
+Cuando un portal bloquea la busqueda, el comportamiento correcto es registrar la fila como intervencion, no guardarla como descartada permanente.
+
 ## Futuras implementaciones
 
-- Aplicar automaticamente a vacantes.
-- Enviar emails a reclutadores.
+Integraciones de portales:
+
+- Mejorar busqueda especifica por portal cuando cambien estructuras publicas.
+- Soportar sesiones manuales persistentes para portales que requieren login, sin automatizar evasion de captchas.
+- Agregar reintentos guiados para filas `requiere_intervencion` despues de que el usuario resuelva login/captcha.
+- Mejorar deduplicacion entre URLs equivalentes de la misma vacante.
+
+Automatizacion de aplicacion:
+
+- Aplicar automaticamente a vacantes preseleccionadas despues de autorizacion explicita del usuario.
+- Registrar estado real de aplicacion: pendiente, aplicada, fallida, requiere accion manual.
+- Adjuntar CV correcto por vacante cuando existan variantes de CV.
+- Enviar emails a reclutadores solo cuando exista correo de contacto y el usuario lo autorice.
+
+IA y materiales:
+
 - Usar IA para redactar cartas mas inteligentes; por ahora usa plantillas simples.
+- Investigar empresa con resumen mas profundo antes de redactar.
+- Generar variantes de carta por industria, seniority, idioma y stack tecnico.
+- Sugerir si una vacante necesita un CV alternativo.
+
+Google Sheets y validacion visual:
+
 - Actualizar Google Sheets directamente.
-- Validar visualmente o sincronizar el Excel subido a Google Sheets.
+- Sincronizar el Excel local con el archivo subido a Google Sheets.
+- Validar visualmente formato, filtros y hojas del Excel subido.
+- Generar un resumen ejecutivo de corrida dentro de Google Sheets.
+
+Calidad y aprendizaje:
+
+- Aprender de vacantes falsas, spam o descartes recurrentes.
+- Crear reglas configurables para empresas, industrias o patrones bloqueados.
+- Generar metricas historicas por portal: ofertas utiles, bloqueos, descartes y preseleccionadas.
+- Agregar pruebas automatizadas para ranking, extractores y workbook.

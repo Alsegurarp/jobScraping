@@ -74,6 +74,8 @@ def remember_ignored_urls(rows, cache_dir=DEFAULT_CACHE_DIR):
     ignored = load_ignored_urls(cache_dir)
     for row in rows:
         if clean_text(row.get("ignorar_en_futuro")).lower() == "si":
+            if clean_text(row.get("fuente_extraccion")) == "auto_search" and clean_text(row.get("requiere_intervencion")).lower() == "si":
+                continue
             url = clean_text(row.get("url"))
             if url:
                 ignored.add(url)
