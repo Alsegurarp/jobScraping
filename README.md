@@ -19,6 +19,8 @@ Si un portal presenta login, captcha, verificacion humana o bloqueo normal de pl
 
 Fase actual: compendio local operativo. El sistema ya busca, extrae, rankea, registra intervenciones y genera cartas solo para vacantes preseleccionadas. No aplica a vacantes ni envia correos.
 
+La automatizacion de aplicaciones se documenta aparte en [FASE2.md](FASE2.md).
+
 Entrada:
 
 - Busqueda automatica en Indeed, LinkedIn, OCC, Computrabajo y Glassdoor.
@@ -270,6 +272,7 @@ Integraciones de portales:
 
 Automatizacion de aplicacion:
 
+- Ver plan detallado en [FASE2.md](FASE2.md).
 - Aplicar automaticamente a vacantes preseleccionadas despues de autorizacion explicita del usuario.
 - Registrar estado real de aplicacion: pendiente, aplicada, fallida, requiere accion manual.
 - Adjuntar CV correcto por vacante cuando existan variantes de CV.
