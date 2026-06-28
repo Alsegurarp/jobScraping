@@ -9,9 +9,10 @@ from .letters import cover_letter, recruiter_message
 from .profile import load_profile
 from .ranking import detect_language, enrich_row, parse_date, score_job, short_reason
 from .research import research_company
+from .results import write_results
 from .search import auto_search
 from .utils import clean_text, slug
-from .workbook import create_template, read_sheet, write_output
+from .workbook import create_template, read_sheet
 
 
 def execution_summary(output_path, detected, shortlisted, discarded, intervention_rows):
@@ -74,7 +75,6 @@ def result_row(profile, row, score, status, matched_skills, flags, letter_path="
         "cache_hit": clean_text(row.get("cache_hit")),
         "motivo_intervencion": motivo,
         "accion_recomendada": accion,
-        "documento_que_se_manda": profile.get("cv_file", "Rene_Alexis_Segura_CV.pdf"),
         "carta_de_interes_al_rol": str(letter_path) if letter_path else "",
         "mensaje_corto_reclutador": message,
         "razon_menos_250": short_reason(status, score, flags, matched_skills),
@@ -195,8 +195,8 @@ def run(
     for index, item in enumerate(detected, 1):
         item["prioridad"] = item["prioridad"] or index
 
-    output_path = output_dir / "botjobs_resultados.xlsx"
-    saved_path = write_output(output_path, detected, shortlisted, discarded, [], intervention_rows, list(research_by_company.values()))
+    output_path = output_dir / "botjobs_resultados.json"
+    saved_path = write_results(output_path, detected, shortlisted, discarded, [], intervention_rows, list(research_by_company.values()))
     return saved_path, execution_summary(saved_path, detected, shortlisted, discarded, intervention_rows)
 
 

@@ -2,16 +2,6 @@ from .utils import clean_text
 
 
 INPUT_SHEET = "vacantes"
-OUTPUT_SHEETS = [
-    "resumen_ejecucion",
-    "vacantes_detectadas",
-    "preseleccionadas",
-    "descartadas",
-    "aplicadas",
-    "requiere_intervencion",
-    "empresas_investigadas",
-]
-
 INPUT_COLUMNS = [
     "titulo",
     "empresa",
@@ -67,8 +57,6 @@ RESULT_COLUMNS = [
     "cache_hit",
     "motivo_intervencion",
     "accion_recomendada",
-    "documento_que_se_manda",
-    "carta_de_interes_al_rol",
     "mensaje_corto_reclutador",
     "razon_menos_250",
     "matched_skills",

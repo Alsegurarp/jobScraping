@@ -2,6 +2,8 @@ READMElocal.md
 output/
 tmp/
 cache/
+runtime/
+.test-tmp/
 .demo-output/
 __pycache__/
 .xlsx

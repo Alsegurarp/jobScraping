@@ -2,6 +2,8 @@
 
 Herramienta local personal para buscar vacantes tech Junior, entrar a portales laborales, extraer descripciones, filtrar oportunidades y generar materiales de aplicacion.
 
+La API local para ejecutar acciones controladas se documenta en [BACKEND.md](BACKEND.md), la app React Native en [MOBILE.md](MOBILE.md) y el plan de automatizacion de aplicaciones en [FASE2.md](FASE2.md).
+
 ## Objetivo principal
 
 BotJobs debe evitar perder tiempo aplicando a ofertas laborales irrelevantes. Para eso, el flujo central debe funcionar de forma automatizada:
@@ -11,7 +13,7 @@ BotJobs debe evitar perder tiempo aplicando a ofertas laborales irrelevantes. Pa
 - Extraer descripciones, empresa, ubicacion, modalidad, salario, fecha, link y correo de contacto cuando exista.
 - Filtrar ofertas recientes, idealmente no mayores a 2 semanas.
 - Rankear vacantes segun el perfil y criterios laborales definidos.
-- Generar un compendio en `.xlsx` y cartas personalizadas en `.md` solo para vacantes preseleccionadas.
+- Generar resultados estructurados en `.json` para la app y cartas personalizadas en `.md` solo para vacantes preseleccionadas.
 
 Si un portal presenta login, captcha, verificacion humana o bloqueo normal de plataforma, el bot debe detenerse, avisar al usuario y continuar despues de la intervencion manual.
 
@@ -30,7 +32,7 @@ Entrada:
 
 Salida:
 
-- `output/botjobs_resultados.xlsx`
+- `output/botjobs_resultados.json`
   - `resumen_ejecucion`
   - `vacantes_detectadas`
   - `preseleccionadas`
@@ -52,7 +54,7 @@ Implementado:
 - Deteccion controlada de `captcha`, `login_requerido`, `bloqueado`, `navegador_bloqueado`, `estructura_no_reconocida`, `sin_descripcion` y `error_red`.
 - Cache local de HTML bruto con TTL de 120 horas.
 - Memoria local de vacantes descartadas mediante `cache/ignored_urls.json`.
-- Workbook `.xlsx` con resumen, vacantes detectadas, preseleccionadas, descartadas, aplicadas, intervenciones y empresas investigadas.
+- JSON con resumen, vacantes detectadas, preseleccionadas, descartadas, aplicadas, intervenciones y empresas investigadas.
 - Cartas `.md` y mensajes cortos solo para vacantes `preseleccionada`.
 - Ranking por industria, salario, horario, remoto, ubicacion, seniority y skills.
 - Filtros para no generar cartas de vacantes descartadas.
@@ -63,8 +65,7 @@ Limitaciones actuales:
 - Algunos portales bloquean busquedas o detalles; esos casos quedan en `requiere_intervencion`.
 - La investigacion de empresa es basica y no usa IA.
 - Las cartas usan plantillas simples, no redaccion inteligente con modelo de lenguaje.
-- El Excel local no se sincroniza automaticamente con Google Sheets.
-- No hay validacion visual automatica del Excel subido.
+- No existe sincronizacion directa con Google Sheets.
 - No aplica a vacantes ni envia correos.
 
 ## Crear plantilla
@@ -154,7 +155,7 @@ Estado actual: `--auto-search` usa paginas de resultados publicas y extrae links
 7. Agregar cache local de HTML/texto extraido para evitar repetir navegacion innecesaria. Estado: implementado con HTML bruto, TTL de 120 horas y `--refresh-cache`.
 8. Registrar estados de extraccion: `ok`, `captcha`, `login_requerido`, `bloqueado`, `estructura_no_reconocida`, `sin_descripcion` y `error_red`. Estado: implementado con `cache_hit`, `motivo_intervencion`, `accion_recomendada` y hoja `requiere_intervencion`.
 9. Mejorar ranking con datos reales: industria, seniority, salario, modalidad, spam y trabajos por proyecto. Estado: implementado con inferencias desde titulo/descripcion.
-10. Generar workbook operativo con hojas de detectadas, preseleccionadas, descartadas, requiere intervencion, empresas investigadas y aplicadas. Estado: implementado con `resumen_ejecucion`, filtros, formato por hoja y conteos operativos.
+10. Generar resultado operativo con secciones de detectadas, preseleccionadas, descartadas, requiere intervencion, empresas investigadas y aplicadas. Estado: implementado en JSON para backend y app movil.
 11. Agregar reporte de ejecucion con conteos de detectadas, extraidas, preseleccionadas, descartadas, intervenciones y cartas. Estado: implementado en salida CLI.
 12. Probar primero con Indeed en una busqueda pequena de maximo 10 resultados.
 13. Expandir portal por portal sin agregar uno nuevo hasta que el anterior extraiga y falle de forma controlada. Estado: completada la primera ronda de validacion para Indeed, OCC, Computrabajo, Glassdoor y LinkedIn.
@@ -194,7 +195,8 @@ Todas las fuentes deben transformarse a estos campos antes de rankear o generar 
 - `botjobs/schema.py`: contrato de datos de vacantes y aliases de columnas antiguas.
 - `botjobs/profile.py`: carga del perfil.
 - `botjobs/ranking.py`: filtros, scoring, fechas, salario, modalidad e idioma.
-- `botjobs/workbook.py`: lectura y escritura de archivos `.xlsx`.
+- `botjobs/workbook.py`: lectura de la plantilla manual `.xlsx`.
+- `botjobs/results.py`: escritura directa de resultados `.json`.
 - `botjobs/letters.py`: cartas y mensajes cortos para reclutadores.
 - `botjobs/research.py`: investigacion web de empresas.
 - `botjobs/search.py`: busqueda automatica de links candidatos en portales.
@@ -288,8 +290,7 @@ IA y materiales:
 Google Sheets y validacion visual:
 
 - Actualizar Google Sheets directamente.
-- Sincronizar el Excel local con el archivo subido a Google Sheets.
-- Validar visualmente formato, filtros y hojas del Excel subido.
+- Sincronizar resultados JSON con Google Sheets.
 - Generar un resumen ejecutivo de corrida dentro de Google Sheets.
 
 Calidad y aprendizaje:
@@ -297,4 +298,4 @@ Calidad y aprendizaje:
 - Aprender de vacantes falsas, spam o descartes recurrentes.
 - Crear reglas configurables para empresas, industrias o patrones bloqueados.
 - Generar metricas historicas por portal: ofertas utiles, bloqueos, descartes y preseleccionadas.
-- Agregar pruebas automatizadas para ranking, extractores y workbook.
+- Agregar mas pruebas automatizadas para ranking, extractores y resultados.

@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-La Fase 2 convierte el compendio de vacantes en un flujo de aplicacion asistida. El sistema debe usar las vacantes ya rankeadas, las cartas generadas y el CV local para preparar aplicaciones, registrar avances y aplicar solo cuando exista autorizacion explicita del usuario.
+La Fase 2 convierte los resultados JSON en un flujo de aplicacion asistida. El sistema debe usar las vacantes ya rankeadas y documentos administrados desde la app para preparar aplicaciones, registrar avances y aplicar solo cuando exista autorizacion explicita del usuario.
 
 La regla central es simple: ninguna vacante se envia sin autorizacion.
 
@@ -10,7 +10,7 @@ La regla central es simple: ninguna vacante se envia sin autorizacion.
 
 La Fase 1 ya entrega:
 
-- Vacantes detectadas en `.xlsx`.
+- Vacantes detectadas en `output/botjobs_resultados.json`.
 - Ranking por perfil.
 - Vacantes preseleccionadas y descartadas.
 - Cartas `.md` para vacantes preseleccionadas.
@@ -23,7 +23,8 @@ La Fase 2 debe leer esa salida y avanzar sobre las vacantes que el usuario aprue
 
 Primera version de Fase 2:
 
-- Leer `output/botjobs_resultados.xlsx`.
+- Leer `output/botjobs_resultados.json`.
+- Permitir subir y consultar CV y cartas desde la app antes de preparar aplicaciones.
 - Detectar vacantes `preseleccionada`.
 - Requerir una marca explicita `autorizar_aplicacion=si`.
 - Abrir la vacante con navegador automatizado.
@@ -31,7 +32,7 @@ Primera version de Fase 2:
 - Cargar CV cuando exista campo de archivo.
 - Pegar carta o mensaje corto cuando exista campo de texto.
 - Detenerse antes del envio final si no se usa una bandera explicita de envio.
-- Registrar resultado de cada intento en el `.xlsx`.
+- Registrar resultado de cada intento en JSON.
 
 ## Fuera de alcance inicial
 
@@ -47,16 +48,16 @@ No debe implementarse al inicio:
 
 Si aparece captcha, login o verificacion humana, el bot debe pausar y registrar `requiere_intervencion`.
 
-## Nuevas columnas propuestas
+## Nuevos campos propuestos
 
-Agregar al workbook:
+Agregar al contrato JSON:
 
 - `autorizar_aplicacion`: `si` o `no`.
 - `estado_aplicacion`: `pendiente`, `autorizada`, `preparada`, `aplicada`, `fallida`, `requiere_intervencion`, `omitida`.
 - `fecha_aplicacion`: fecha/hora del intento o envio.
 - `portal_aplicacion`: portal donde se intento aplicar.
-- `cv_usado`: ruta o nombre del CV enviado.
-- `carta_usada`: ruta de la carta usada.
+- `cv_id`: identificador del CV administrado por la app.
+- `carta_id`: identificador de la carta administrada por la app.
 - `mensaje_usado`: mensaje corto usado, si aplica.
 - `requiere_confirmacion_envio`: `si` o `no`.
 - `resultado_aplicacion`: descripcion corta del resultado.
@@ -78,19 +79,19 @@ Agregar al workbook:
 Modo seco para revisar que aplicaria:
 
 ```powershell
-python .\bot_jobs.py --apply-approved --profile .\profile.example.json --jobs .\output\botjobs_resultados.xlsx --dry-run
+python .\bot_jobs.py --apply-approved --profile .\profile.example.json --jobs .\output\botjobs_resultados.json --dry-run
 ```
 
 Modo asistido con navegador, sin enviar:
 
 ```powershell
-python .\bot_jobs.py --apply-approved --profile .\profile.example.json --jobs .\output\botjobs_resultados.xlsx --browser
+python .\bot_jobs.py --apply-approved --profile .\profile.example.json --jobs .\output\botjobs_resultados.json --browser
 ```
 
 Modo con envio final habilitado:
 
 ```powershell
-python .\bot_jobs.py --apply-approved --profile .\profile.example.json --jobs .\output\botjobs_resultados.xlsx --browser --submit
+python .\bot_jobs.py --apply-approved --profile .\profile.example.json --jobs .\output\botjobs_resultados.json --browser --submit
 ```
 
 `--submit` solo debe actuar sobre vacantes con:
@@ -104,15 +105,16 @@ python .\bot_jobs.py --apply-approved --profile .\profile.example.json --jobs .\
 ## Flujo recomendado
 
 1. Ejecutar Fase 1 con `--auto-search`.
-2. Revisar `preseleccionadas` en el `.xlsx`.
-3. Marcar manualmente `autorizar_aplicacion=si` solo en las vacantes aprobadas.
-4. Ejecutar `--apply-approved --dry-run`.
-5. Revisar el reporte de vacantes que se intentarian aplicar.
-6. Ejecutar `--apply-approved --browser`.
-7. Resolver manualmente login/captcha si aparece.
-8. Revisar formularios preparados.
-9. Enviar manualmente o ejecutar despues con `--submit`.
-10. Revisar `estado_aplicacion` y `resultado_aplicacion` en el `.xlsx`.
+2. Revisar `preseleccionadas` en la app.
+3. Subir o seleccionar el CV y consultar la carta desde `Documentos`.
+4. Autorizar desde la app solo las vacantes aprobadas.
+5. Ejecutar `--apply-approved --dry-run`.
+6. Revisar el reporte de vacantes que se intentarian aplicar.
+7. Ejecutar `--apply-approved --browser`.
+8. Resolver manualmente login/captcha si aparece.
+9. Revisar formularios preparados.
+10. Enviar manualmente o ejecutar despues con `--submit`.
+11. Revisar `estado_aplicacion` y `resultado_aplicacion` en la app.
 
 ## Estructura tecnica propuesta
 
@@ -136,24 +138,26 @@ Responsabilidades:
 
 ## Roadmap Fase 2
 
-1. Agregar columnas de aplicacion al contrato de workbook.
-2. Agregar comando `--apply-approved` en modo `--dry-run`.
-3. Crear hoja o seccion de seguimiento de aplicaciones.
-4. Implementar lectura de vacantes autorizadas.
-5. Validar existencia de CV y carta antes de intentar aplicar.
-6. Crear modulo `botjobs/apply`.
-7. Implementar aplicador base que abre URL y detecta barreras.
-8. Implementar primer portal en modo asistido, recomendado LinkedIn o Glassdoor por facilidad de deteccion de URLs reales.
-9. Registrar evidencia y resultado por intento.
-10. Agregar `--submit` como bandera separada y bloqueada por autorizacion.
-11. Repetir portal por portal.
-12. Agregar metricas de aplicaciones: preparadas, aplicadas, fallidas e intervenciones.
+1. Agregar campos de aplicacion al contrato JSON.
+2. Implementar `Documentos` para subir y consultar CV y cartas desde la app.
+3. Agregar comando `--apply-approved` en modo `--dry-run`.
+4. Crear una seccion JSON de seguimiento de aplicaciones.
+5. Implementar lectura de vacantes autorizadas.
+6. Validar existencia de CV y carta antes de intentar aplicar.
+7. Crear modulo `botjobs/apply`.
+8. Implementar aplicador base que abre URL y detecta barreras.
+9. Implementar primer portal en modo asistido, recomendado LinkedIn o Glassdoor por facilidad de deteccion de URLs reales.
+10. Registrar evidencia y resultado por intento.
+11. Agregar `--submit` como bandera separada y bloqueada por autorizacion.
+12. Repetir portal por portal.
+13. Agregar metricas de aplicaciones: preparadas, aplicadas, fallidas e intervenciones.
 
 ## Criterio de exito
 
 La Fase 2 se considera util cuando:
 
-- El usuario puede marcar vacantes aprobadas en el Excel.
+- El usuario puede autorizar vacantes desde la app.
+- El CV y la carta seleccionados se consultan desde la app mediante identificadores, no rutas locales.
 - El bot identifica solo esas vacantes.
 - El bot abre cada oferta y prepara materiales.
 - El bot registra claramente si la aplicacion quedo preparada, aplicada, fallida o requiere intervencion.
