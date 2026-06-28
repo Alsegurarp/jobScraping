@@ -10,22 +10,31 @@ export function Page({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.background }}
-      contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingTop: insets.top + Spacing.three,
-          paddingBottom: insets.bottom + BottomTabInset + Spacing.four,
-        },
-      ]}>
-      <View style={styles.inner}>{children}</View>
-    </ScrollView>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingTop: insets.top + Spacing.three,
+            paddingBottom: insets.bottom + BottomTabInset + Spacing.four,
+          },
+        ]}
+      >
+        <View style={styles.inner}>{children}</View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
   content: {
     flexGrow: 1,
     alignItems: 'center',
