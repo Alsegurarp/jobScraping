@@ -4,7 +4,7 @@
 
 BotJobs se considera finalizado como MVP cuando pueda preparar y enviar, de forma controlada, una vacante aprobada en cada portal soportado, conservar la sesion y registrar el resultado sin riesgo de duplicados.
 
-## Prioridad P0 — Implementacion completada
+## Prioridad P0 — Implementacion local finalizada ✅
 
 Orden obligatorio de ejecución:
 
@@ -16,7 +16,7 @@ La implementación local de P0 está completa. La validación real por portal re
 
 ## P0.1 — Sesiones e intervencion manual
 
-Estado: implementado.
+Estado: **Finalizado**. ✅
 
 - Usar un perfil persistente de navegador por portal para conservar sesiones autorizadas.
 - Permitir que el usuario resuelva login, captcha o verificación humana.
@@ -27,9 +27,14 @@ Estado: implementado.
 
 Criterio de terminado: pausar ante una barrera, resolverla manualmente y continuar sin reiniciar la aplicación.
 
-## P0.2 — Adaptadores por portal
+## P0.2 — Adaptadores por portal ✅
 
-Estado: implementados los cinco adaptadores; pendiente validación operativa con una vacante real por portal.
+Estado: **Finalizada la implementación local**. Pendiente: validación operativa con una vacante real por cada portal incluido en el MVP.
+
+Alcance del MVP móvil:
+
+- LinkedIn: excluido de la app móvil por bloqueo de Cloudflare (`requiere_intervencion`). Su corrección se difiere a una versión futura.
+- Un portal que requiera intervención por bloqueo de plataforma se documenta y se retira del selector móvil durante el MVP.
 
 Implementar y verificar adaptadores específicos para:
 
@@ -50,9 +55,9 @@ Cada adaptador debe:
 
 Criterio de terminado por portal: preparar correctamente al menos una postulación real sin enviarla. No avanzar al portal siguiente hasta cumplirlo.
 
-## P0.3 — Envio final seguro
+## P0.3 — Envio final seguro ✅
 
-Estado: implementado con confirmación literal, dominio permitido, autorización, materiales válidos e idempotencia.
+Estado: **Finalizada la implementación local** con confirmación literal, dominio permitido, autorización, materiales válidos e idempotencia. Pendiente: validar un envío real por cada portal incluido en el MVP.
 
 - Habilitar `--submit` únicamente para adaptadores verificados.
 - Exigir `decision_usuario=aprobada`, CV válido, carta existente y formulario compatible.
@@ -66,7 +71,7 @@ Criterio de terminado por portal: realizar un envío controlado, comprobar su co
 
 ## P1 — App movil
 
-Estado: implementado.
+Estado: **Finalizado**. ✅
 
 - Pantalla específica de Documentos.
 - Selección de CV diferente por vacante.
@@ -75,26 +80,27 @@ Estado: implementado.
 
 ## P1 — Historial y metricas
 
-Estado: implementado.
+Estado: **Finalizado**.
 
 - El historial se conserva aunque se ejecute una búsqueda nueva.
 - Se muestran autorizadas, preparadas, aplicadas, fallidas e intervenciones.
 - Los intentos quedan registrados y los duplicados se bloquean.
 
-## P1 — Validacion final
+## P1 — Validacion final ✅
 
-Estado: validación local completada; pendiente validación externa con cuentas y vacantes reales.
+Estado: **Finalizada la validación local**. Pendiente: validación externa con cuentas y vacantes reales.
 
 - Ejecutar una búsqueda pequeña real en cada portal.
 - Preparar una aplicación real por portal.
 - Verificar CV, carta, campos y evidencia.
 - Ejecutar un envío controlado por cada adaptador antes de declararlo estable.
-- Dejar pruebas automatizadas para autorización, idempotencia y estados.
+- Pruebas automatizadas para autorización, idempotencia y estados. **Finalizado**.
 
 ## Fuera del cierre del MVP
 
 Estas integraciones pueden realizarse después:
 
+- Recuperar portales retirados por `requiere_intervencion`, empezando por LinkedIn.
 - Redacción con IA.
 - Google Sheets.
 - Emails automáticos a reclutadores.

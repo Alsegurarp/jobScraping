@@ -1,0 +1,17 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      BOTJOBS_RUN_TIMEOUT_SECONDS: "1800"
+    volumes:
+      - botjobs-output:/app/output
+      - botjobs-runtime:/app/runtime
+      - botjobs-cache:/app/cache
+    restart: unless-stopped
+
+volumes:
+  botjobs-output:
+  botjobs-runtime:
+  botjobs-cache:

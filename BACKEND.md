@@ -24,6 +24,18 @@ python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 La documentacion interactiva queda disponible en `http://127.0.0.1:8000/docs`.
 
+## Ejecutar con Docker
+
+```powershell
+docker compose up --build
+```
+
+El servicio queda disponible en `http://localhost:8000`. Los resultados, documentos, decisiones y caché se conservan en volúmenes de Docker.
+
+Para conectar la app móvil a un despliegue remoto, configura `EXPO_PUBLIC_API_URL` con la URL HTTPS pública del backend y reinicia Expo.
+
+No expongas este contenedor directamente a Internet: el backend todavía no tiene autenticación y permite consultar CVs y ejecutar acciones. Colócalo detrás de HTTPS y autenticación antes de un despliegue público.
+
 El timeout predeterminado de cada corrida es de 1800 segundos. Puede configurarse antes de iniciar el servidor:
 
 ```powershell

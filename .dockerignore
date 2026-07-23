@@ -1,0 +1,14 @@
+.git
+.agents
+.codex
+.venv
+.test-tmp
+cache
+mobile
+output
+runtime
+tests
+tmp
+__pycache__
+*.pyc
+*.md

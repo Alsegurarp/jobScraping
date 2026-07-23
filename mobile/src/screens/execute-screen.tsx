@@ -13,7 +13,6 @@ import { useBotJobs } from '@/state/botjobs-provider';
 
 const PORTALS: { id: Portal; label: string }[] = [
   { id: 'indeed', label: 'Indeed' },
-  { id: 'linkedin', label: 'LinkedIn' },
   { id: 'occ', label: 'OCC' },
   { id: 'computrabajo', label: 'Computrabajo' },
   { id: 'glassdoor', label: 'Glassdoor' },
@@ -23,17 +22,16 @@ export default function ExecuteScreen() {
   const theme = useTheme();
   const actions = useBotJobs();
   const [params, setParams] = useState<SearchParams>({
-    portals: ['indeed', 'linkedin'], max_results: 10, refresh_cache: false, browser: false, research: false,
+    portals: ['indeed'], max_results: 10, refresh_cache: false, browser: false, research: false,
   });
+  const [maxResults, setMaxResults] = useState('10');
 
-  const togglePortal = (portal: Portal) => setParams((current) => {
-    const selected = current.portals.includes(portal);
-    if (selected && current.portals.length === 1) return current;
-    return { ...current, portals: selected ? current.portals.filter((item) => item !== portal) : [...current.portals, portal] };
-  });
+  const normalizeMaxResults = () => Math.min(50, Math.max(1, Number(maxResults) || 10));
 
   const runSearch = async () => {
-    if (await actions.startSearch(params)) router.push('/results');
+    const max_results = normalizeMaxResults();
+    setMaxResults(String(max_results));
+    if (await actions.startSearch({ ...params, max_results })) router.push('/results');
   };
 
   const runExtraction = async () => {
@@ -55,16 +53,16 @@ export default function ExecuteScreen() {
       <FeedbackBanner loading={actions.loading} error={actions.error} status={actions.activeRun ? `${runTypeLabel(actions.activeRun.type)} · ${statusLabel(actions.activeRun.status)}` : undefined} />
 
       <View style={styles.section}>
-        <ThemedText selectable style={styles.sectionTitle}>Buscar vacantes</ThemedText>
+        <ThemedText selectable style={styles.sectionTitle}>Buscar vacante</ThemedText>
         <View style={styles.portalGrid}>
           {PORTALS.map((portal) => {
             const selected = params.portals.includes(portal.id);
             return (
               <Pressable
                 key={portal.id}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: selected }}
-                onPress={() => togglePortal(portal.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => setParams((current) => ({ ...current, portals: [portal.id] }))}
                 style={[styles.portal, { backgroundColor: selected ? theme.backgroundSelected : theme.surface, borderColor: selected ? theme.primary : theme.border }]}>
                 <SymbolView name={{ ios: selected ? 'checkmark.circle.fill' : 'circle', android: selected ? 'check_circle' : 'radio_button_unchecked', web: selected ? 'check_circle' : 'circle' }} tintColor={selected ? theme.primary : theme.textSecondary} size={20} />
                 <ThemedText selectable type="smallBold">{portal.label}</ThemedText>
@@ -81,13 +79,16 @@ export default function ExecuteScreen() {
           <TextInput
             accessibilityLabel="Máximo de resultados"
             keyboardType="number-pad"
-            value={String(params.max_results)}
-            onChangeText={(value) => setParams((current) => ({ ...current, max_results: Math.min(50, Math.max(1, Number(value) || 1)) }))}
+            value={maxResults}
+            onChangeText={(value) => {
+              if (/^\d*$/.test(value)) setMaxResults(value);
+            }}
+            onBlur={() => setMaxResults(String(normalizeMaxResults()))}
             style={[styles.numberInput, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
           />
         </View>
 
-        <SettingSwitch label="Actualizar caché" value={params.refresh_cache} onChange={(value) => setParams((current) => ({ ...current, refresh_cache: value }))} />
+        <SettingSwitch label="Buscar en sitios previamente evaluados" value={params.refresh_cache} onChange={(value) => setParams((current) => ({ ...current, refresh_cache: value }))} />
         <SettingSwitch label="Usar navegador" value={params.browser} onChange={(value) => setParams((current) => ({ ...current, browser: value }))} />
         <SettingSwitch label="Investigar empresas" value={params.research} onChange={(value) => setParams((current) => ({ ...current, research: value }))} />
         <CommandButton label="Iniciar búsqueda" icon="magnifyingglass" onPress={runSearch} disabled={actions.loading || !actions.connected} primary />

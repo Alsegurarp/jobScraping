@@ -4,6 +4,15 @@ La app movil esta construida con Expo y React Native. Consume exclusivamente las
 
 La pestaña `Documentos` permite subir, consultar y activar CV. En `Resultados` puede elegirse un CV específico por vacante; si no se elige, se usa el CV activo. La vista `Seguimiento` muestra estados y evidencias. El envío exige confirmación explícita.
 
+## Portales incluidos en el MVP
+
+- Indeed.
+- OCC.
+- Computrabajo.
+- Glassdoor.
+
+LinkedIn fue retirado del selector móvil porque Cloudflare lo mantiene en `requiere_intervencion`. Los ajustes específicos para recuperarlo quedan para una versión futura. Durante el MVP, cualquier portal bloqueado de la misma forma debe documentarse y retirarse del selector móvil.
+
 ## 1. Iniciar el backend para la red local
 
 Desde la raiz del proyecto:

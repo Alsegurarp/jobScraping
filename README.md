@@ -69,6 +69,7 @@ Implementado:
 
 Limitaciones actuales:
 
+- LinkedIn está fuera del selector de la app móvil por bloqueo de Cloudflare (`requiere_intervencion`); se retomará después del MVP.
 - El sistema no resuelve captchas, logins ni verificaciones humanas.
 - Algunos portales bloquean busquedas o detalles; esos casos quedan en `requiere_intervencion`.
 - La investigacion de empresa es basica y no usa IA.
