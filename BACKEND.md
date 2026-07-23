@@ -39,8 +39,8 @@ Para conectar la app móvil a un despliegue remoto, configura `EXPO_PUBLIC_API_U
 Configuración del proyecto:
 
 - Root Directory: raíz del repositorio (`.`).
-- Framework Preset: Other.
-- Dockerfile detectado: `Dockerfile.vercel`.
+- Framework Preset: FastAPI o detección automática.
+- Entrada detectada: `app.py`.
 - No configurar Build Command, Output Directory ni Install Command.
 
 En la pestaña Storage de Vercel, crea un Blob **privado** y conéctalo al proyecto. Vercel agregará `BLOB_READ_WRITE_TOKEN`.

@@ -310,3 +310,21 @@ Calidad y aprendizaje:
 - Crear reglas configurables para empresas, industrias o patrones bloqueados.
 - Generar metricas historicas por portal: ofertas utiles, bloqueos, descartes y preseleccionadas.
 - Agregar mas pruebas automatizadas para ranking, extractores y resultados.
+
+
+## Variables de entorno para Vercel
+
+Configurar como secretos en Vercel; nunca guardar sus valores en Git:
+
+```text
+BLOB_READ_WRITE_TOKEN=<generado al conectar un Blob privado>
+BOTJOBS_API_KEY=<clave aleatoria de 64 caracteres>
+BOTJOBS_RUN_TIMEOUT_SECONDS=300
+```
+
+La aplicación móvil usa:
+
+```text
+EXPO_PUBLIC_API_URL=https://TU-PROYECTO.vercel.app
+EXPO_PUBLIC_API_KEY=<mismo valor que BOTJOBS_API_KEY>
+```
