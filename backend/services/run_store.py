@@ -18,6 +18,7 @@ class RunStore:
         payload = run.model_dump(mode="json")
         serialized = json.dumps(payload, ensure_ascii=True, indent=2)
         with self._lock:
+            self.runs_dir.mkdir(parents=True, exist_ok=True)
             temp_path.write_text(serialized, encoding="utf-8")
             try:
                 temp_path.replace(path)

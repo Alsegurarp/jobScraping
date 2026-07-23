@@ -114,6 +114,7 @@ function ResultCard({ row, cvs }: { row: Record<string, ResultValue>; cvs: CvDoc
   const letterId = String(row.carta_id || '');
   const url = String(row.url || '');
   const evidenceId = String(row.evidencia_aplicacion || '').match(/([a-f0-9]{16})\.png$/)?.[1] || '';
+  const flags = String(row.flags || '').split(',').map((flag) => flag.trim()).filter(Boolean);
 
   const toggleLetter = async () => {
     if (letter !== null) {
@@ -156,7 +157,16 @@ function ResultCard({ row, cvs }: { row: Record<string, ResultValue>; cvs: CvDoc
           <ThemedText selectable style={styles.cardTitle}>{title}</ThemedText>
           {!!subtitle && <ThemedText selectable type="small" themeColor="textSecondary">{subtitle}</ThemedText>}
           {!!decision && <ThemedText selectable type="smallBold" style={{ color: statusColor(decision, theme) }}>Decision: {humanize(decision)}</ThemedText>}
-          {!!row.razon_menos_250 && <ThemedText selectable type="small">{String(row.razon_menos_250)}</ThemedText>}
+          {!!row.razon_menos_250 && <ThemedText selectable type="small">{String(row.razon_menos_250).replaceAll('_', ' ')}</ThemedText>}
+          {flags.length > 0 && (
+            <View style={styles.flagRow}>
+              {flags.map((flag) => (
+                <View key={flag} style={[styles.flag, { backgroundColor: theme.backgroundElement, borderColor: theme.warning }]}>
+                  <ThemedText selectable type="smallBold" style={{ color: theme.warning }}>{humanize(flag)}</ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
         <SymbolView name={{ ios: expanded ? 'chevron.up' : 'chevron.down', android: expanded ? 'expand_less' : 'expand_more', web: expanded ? 'expand_less' : 'expand_more' }} tintColor={theme.textSecondary} size={20} />
       </Pressable>
@@ -254,6 +264,8 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
   cardTitle: { fontSize: 17, lineHeight: 22, fontWeight: '700' },
   scoreRow: { minHeight: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  flagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: 4 },
+  flag: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   details: { borderTopWidth: StyleSheet.hairlineWidth, gap: 10, padding: 14 },
   detailRow: { flexDirection: 'row', gap: 12 }, detailLabel: { width: 120 },
   decisionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

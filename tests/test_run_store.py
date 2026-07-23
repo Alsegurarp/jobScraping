@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+import shutil
 
 from backend.schemas import RunRecord
 from backend.services.run_store import RunStore
@@ -41,3 +42,14 @@ def test_store_rejects_run_id_that_could_escape_directory():
         assert str(exc) == "invalid run_id"
     else:
         raise AssertionError("invalid run_id was accepted")
+
+
+def test_store_recreates_directory_removed_by_state_restore():
+    runs_dir = Path("runtime/test-runs-restored")
+    store = RunStore(runs_dir)
+    shutil.rmtree(runs_dir)
+    run = make_run("00000000-0000-0000-0000-000000000003", datetime.now(timezone.utc))
+
+    store.save(run)
+
+    assert store.get(run.run_id) == run
