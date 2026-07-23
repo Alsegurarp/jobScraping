@@ -7,3 +7,5 @@ runtime/
 .demo-output/
 __pycache__/
 .xlsx
+.env
+.env.local

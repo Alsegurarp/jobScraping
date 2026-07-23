@@ -36,9 +36,12 @@ Crea `mobile/.env` a partir de `mobile/.env.example` y usa esa IP:
 
 ```text
 EXPO_PUBLIC_API_URL=http://TU_IP_WIFI:8000
+EXPO_PUBLIC_API_KEY=
 ```
 
 El archivo `.env` es local y esta ignorado por Git. Reinicia Expo despues de cambiarlo.
+
+En un despliegue Vercel, usa la URL HTTPS del proyecto y copia en `EXPO_PUBLIC_API_KEY` el mismo valor configurado como `BOTJOBS_API_KEY` en el backend.
 
 ## 3. Iniciar Expo
 

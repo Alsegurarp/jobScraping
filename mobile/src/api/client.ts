@@ -4,6 +4,7 @@ import { File as ExpoFile } from 'expo-file-system';
 import type { BotJobsResults, CvDocument, RunRecord, SearchParams } from '@/api/types';
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const API_KEY = process.env.EXPO_PUBLIC_API_KEY || '';
 
 class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -14,7 +15,9 @@ class ApiError extends Error {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   try {
-    const response = await expoFetch(`${API_URL}${path}`, options);
+    const headers = new Headers(options?.headers);
+    if (API_KEY) headers.set('Authorization', `Bearer ${API_KEY}`);
+    const response = await expoFetch(`${API_URL}${path}`, { ...options, headers });
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}));
       throw new ApiError(payload.detail || `Error HTTP ${response.status}`, response.status);
@@ -55,7 +58,7 @@ export const botJobsApi = {
   cvs: () => request<CvDocument[]>('/documents/cv'),
   uploadCv,
   activateCv: (cvId: string) => post<CvDocument>(`/documents/cv/${encodeURIComponent(cvId)}/active`),
-  cvUrl: (cvId: string) => `${API_URL}/documents/cv/${encodeURIComponent(cvId)}`,
+  cvUrl: (cvId: string) => authenticatedUrl(`/documents/cv/${encodeURIComponent(cvId)}`),
   decideJob: (body: { url: string; decision: 'aprobada' | 'descartada' | 'revision'; note?: string; cv_id?: string }) => post('/jobs/decision', body),
   search: (params: SearchParams) => post<RunRecord>('/runs/search', params),
   extractLinks: (params: { browser: boolean; research: boolean }) =>
@@ -64,5 +67,9 @@ export const botJobsApi = {
   prepareApplications: () => post<RunRecord>('/runs/apply-approved/prepare'),
   retryApplications: () => post<RunRecord>('/runs/apply-approved/retry'),
   submitApplications: () => post<RunRecord>('/runs/apply-approved/submit', { confirmation: 'ENVIAR' }),
-  evidenceUrl: (evidenceId: string) => `${API_URL}/evidence/${encodeURIComponent(evidenceId)}`,
+  evidenceUrl: (evidenceId: string) => authenticatedUrl(`/evidence/${encodeURIComponent(evidenceId)}`),
 };
+
+function authenticatedUrl(path: string) {
+  return `${API_URL}${path}${API_KEY ? `?api_key=${encodeURIComponent(API_KEY)}` : ''}`;
+}

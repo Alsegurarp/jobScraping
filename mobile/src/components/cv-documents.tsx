@@ -57,7 +57,7 @@ export function CvDocuments() {
       <View style={styles.header}>
         <View style={{ flex: 1, gap: 2 }}>
           <ThemedText selectable style={styles.title}>Currículums</ThemedText>
-          <ThemedText selectable type="small" themeColor="textSecondary">PDF · máximo 10 MB</ThemedText>
+          <ThemedText selectable type="small" themeColor="textSecondary">PDF · máximo 4 MB</ThemedText>
         </View>
         <Pressable accessibilityRole="button" disabled={loading} onPress={() => void upload()} style={({ pressed }) => [styles.upload, { backgroundColor: theme.primary, opacity: loading ? 0.5 : pressed ? 0.72 : 1 }]}>
           <SymbolView name={{ ios: 'arrow.up.doc', android: 'upload_file', web: 'upload_file' }} tintColor={theme.primaryText} size={18} />

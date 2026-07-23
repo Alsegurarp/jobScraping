@@ -31,6 +31,10 @@ class ProcessRunner:
             output_file=config.OUTPUT_FILE,
         )
         self.store.save(run)
+        if config.VERCEL_STATE_ENABLED:
+            # ponytail: one synchronous run fits the single-user MVP; use a queue when concurrent users matter.
+            self._execute(run.run_id)
+            return self.store.get(run.run_id)
         thread = threading.Thread(target=self._execute, args=(run.run_id,), daemon=True)
         thread.start()
         return run

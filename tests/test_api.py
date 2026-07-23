@@ -18,6 +18,12 @@ def test_health():
     assert response.json() == {"status": "ok", "service": "botjobs-backend"}
 
 
+def test_api_key_protects_non_health_routes(monkeypatch):
+    monkeypatch.setattr(config, "API_KEY", "secret")
+    assert client.get("/runs").status_code == 401
+    assert client.get("/runs", headers={"Authorization": "Bearer secret"}).status_code == 200
+
+
 def test_cors_allows_private_lan_frontend():
     origin = "http://10.2.34.25:8081"
     response = client.options(

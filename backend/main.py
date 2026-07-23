@@ -1,12 +1,15 @@
 import re
 import json
+import asyncio
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID, uuid4
 
 from fastapi import FastAPI, HTTPException, Query, Request, status
+from anyio import to_thread
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from backend import config
 from backend.schemas import CvDocument, ExtractLinksParams, JobDecision, JobDecisionRecord, LetterContent, ResultsPayload, RunRecord, SearchParams, SubmitApplicationsParams
@@ -22,6 +25,7 @@ from backend.services.process_runner import ProcessRunner
 from backend.services.run_store import RunStore
 from backend.services.result_reader import latest_output_path, read_results
 from backend.services.decisions import save_decision
+from backend.services.vercel_state import VercelState
 
 
 app = FastAPI(title="BotJobs Backend", version="0.1.0")
@@ -33,6 +37,24 @@ app.add_middleware(
 )
 run_store = RunStore(config.RUNS_DIR)
 process_runner = ProcessRunner(run_store)
+vercel_state = VercelState(config.BASE_DIR) if config.VERCEL_STATE_ENABLED else None
+vercel_state_lock = asyncio.Lock()
+
+
+@app.middleware("http")
+async def deployment_state_and_auth(request: Request, call_next):
+    if request.url.path != "/health" and config.API_KEY:
+        supplied = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        supplied = supplied or request.query_params.get("api_key", "")
+        if not secrets.compare_digest(supplied, config.API_KEY):
+            return JSONResponse(status_code=401, content={"detail": "No autorizado"})
+    if vercel_state is None or request.url.path == "/health":
+        return await call_next(request)
+    async with vercel_state_lock:
+        await to_thread.run_sync(vercel_state.restore)
+        response = await call_next(request)
+        await to_thread.run_sync(vercel_state.persist)
+        return response
 
 
 @app.get("/health")
@@ -153,7 +175,7 @@ async def upload_cv(request: Request, filename: str = Query(min_length=1, max_le
     async for chunk in request.stream():
         content.extend(chunk)
         if len(content) > config.MAX_CV_BYTES:
-            raise HTTPException(status_code=413, detail="El CV supera el limite de 10 MB")
+            raise HTTPException(status_code=413, detail="El CV supera el limite de 4 MB")
     if not content.startswith(b"%PDF-"):
         raise HTTPException(status_code=422, detail="El archivo no contiene un PDF valido")
 

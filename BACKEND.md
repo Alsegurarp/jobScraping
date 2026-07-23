@@ -32,9 +32,38 @@ docker compose up --build
 
 El servicio queda disponible en `http://localhost:8000`. Los resultados, documentos, decisiones y caché se conservan en volúmenes de Docker.
 
-Para conectar la app móvil a un despliegue remoto, configura `EXPO_PUBLIC_API_URL` con la URL HTTPS pública del backend y reinicia Expo.
+Para conectar la app móvil a un despliegue remoto, configura `EXPO_PUBLIC_API_URL` y `EXPO_PUBLIC_API_KEY` y reinicia Expo.
 
-No expongas este contenedor directamente a Internet: el backend todavía no tiene autenticación y permite consultar CVs y ejecutar acciones. Colócalo detrás de HTTPS y autenticación antes de un despliegue público.
+## Desplegar en Vercel
+
+Configuración del proyecto:
+
+- Root Directory: raíz del repositorio (`.`).
+- Framework Preset: Other.
+- Dockerfile detectado: `Dockerfile.vercel`.
+- No configurar Build Command, Output Directory ni Install Command.
+
+En la pestaña Storage de Vercel, crea un Blob **privado** y conéctalo al proyecto. Vercel agregará `BLOB_READ_WRITE_TOKEN`.
+
+Declara estas variables para Production y Preview:
+
+```text
+BOTJOBS_API_KEY=una-clave-aleatoria-larga
+BOTJOBS_RUN_TIMEOUT_SECONDS=300
+```
+
+`VERCEL` y `PORT` son variables proporcionadas por la plataforma y no deben declararse manualmente.
+
+El despliegue guarda `runtime`, `output` y `cache` como un snapshot en el Blob privado. Las ejecuciones se realizan de forma síncrona para terminar dentro de la solicitud de Vercel. Este modo está diseñado para un solo usuario y una ejecución a la vez.
+
+Después del despliegue, configura la app móvil:
+
+```text
+EXPO_PUBLIC_API_URL=https://TU-PROYECTO.vercel.app
+EXPO_PUBLIC_API_KEY=la-misma-clave-de-BOTJOBS_API_KEY
+```
+
+Vercel limita las solicitudes a 4.5 MB; BotJobs limita cada CV PDF a 4 MB.
 
 El timeout predeterminado de cada corrida es de 1800 segundos. Puede configurarse antes de iniciar el servidor:
 
