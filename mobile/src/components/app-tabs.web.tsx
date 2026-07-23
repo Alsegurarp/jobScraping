@@ -6,6 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
+import type { Href } from 'expo-router';
 import { Pressable, View, StyleSheet } from 'react-native';
 
 import { ThemedText } from './themed-text';
@@ -27,6 +28,9 @@ export default function AppTabs() {
           </TabTrigger>
           <TabTrigger name="history" href="/history" asChild>
             <TabButton>Historial</TabButton>
+          </TabTrigger>
+          <TabTrigger name="documents" href={'/documents' as Href} asChild>
+            <TabButton>Documentos</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>

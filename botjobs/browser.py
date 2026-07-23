@@ -12,6 +12,8 @@ NODE_MODULES = Path.home() / ".cache" / "codex-runtimes" / "codex-primary-runtim
 PNPM_NODE_MODULES = NODE_MODULES / ".pnpm" / "node_modules"
 NODE_EXE = Path.home() / ".cache" / "codex-runtimes" / "codex-primary-runtime" / "dependencies" / "node" / "bin" / "node.exe"
 SCRIPT = Path(__file__).with_name("browser_extract.mjs")
+APPLY_SCRIPT = Path(__file__).with_name("browser_apply.mjs")
+SESSION_SCRIPT = Path(__file__).with_name("browser_session.mjs")
 
 
 def node_command():
@@ -114,3 +116,34 @@ def fetch_html_with_browser(url, timeout_ms=30000):
     if not payload.get("ok"):
         raise RuntimeError(payload.get("error") or payload.get("estado_extraccion") or "error_navegador")
     return payload.get("html") or ""
+
+
+def prepare_application(url, cv_path, letter_path, evidence_path, portal, profile_path, submit=False, timeout_ms=30000):
+    command = [
+        node_command(), str(APPLY_SCRIPT), clean_text(url), str(cv_path),
+        str(letter_path), str(evidence_path), portal, str(profile_path),
+        "submit" if submit else "prepare", str(timeout_ms),
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=(timeout_ms / 1000) + 10,
+            env=node_env(),
+        )
+        return json.loads((completed.stdout or "").strip().splitlines()[-1])
+    except Exception as exc:
+        return {"ok": False, "estado": "fallida", "resultado": f"No se pudo preparar: {exc}"}
+
+
+def open_portal_session(portal, runtime_dir=Path("runtime")):
+    if portal not in {"linkedin", "indeed", "occ", "computrabajo", "glassdoor"}:
+        raise ValueError("Portal no soportado")
+    return subprocess.run(
+        [node_command(), str(SESSION_SCRIPT), portal, str(runtime_dir / "browser-profiles" / portal)],
+        check=False,
+        env=node_env(),
+    ).returncode

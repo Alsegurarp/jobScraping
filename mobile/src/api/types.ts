@@ -12,7 +12,7 @@ export type RunStatus = 'pending' | 'running' | 'completed' | 'failed';
 
 export type RunRecord = {
   run_id: string;
-  type: 'search' | 'extract_links' | 'apply_approved_dry_run';
+  type: 'search' | 'extract_links' | 'apply_approved_dry_run' | 'prepare_applications' | 'retry_applications' | 'submit_applications';
   status: RunStatus;
   params: Record<string, unknown>;
   created_at: string;
@@ -36,4 +36,12 @@ export type BotJobsResults = {
   run_id: string | null;
   output_file: string;
   sheets: Record<string, ResultSheet>;
+};
+
+export type CvDocument = {
+  cv_id: string;
+  filename: string;
+  size_bytes: number;
+  uploaded_at: string;
+  active: boolean;
 };

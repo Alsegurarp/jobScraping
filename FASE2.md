@@ -138,19 +138,19 @@ Responsabilidades:
 
 ## Roadmap Fase 2
 
-1. Agregar campos de aplicacion al contrato JSON.
-2. Implementar `Documentos` para subir y consultar CV y cartas desde la app.
-3. Agregar comando `--apply-approved` en modo `--dry-run`.
-4. Crear una seccion JSON de seguimiento de aplicaciones.
-5. Implementar lectura de vacantes autorizadas.
-6. Validar existencia de CV y carta antes de intentar aplicar.
-7. Crear modulo `botjobs/apply`.
-8. Implementar aplicador base que abre URL y detecta barreras.
-9. Implementar primer portal en modo asistido, recomendado LinkedIn o Glassdoor por facilidad de deteccion de URLs reales.
-10. Registrar evidencia y resultado por intento.
-11. Agregar `--submit` como bandera separada y bloqueada por autorizacion.
-12. Repetir portal por portal.
-13. Agregar metricas de aplicaciones: preparadas, aplicadas, fallidas e intervenciones.
+1. Agregar campos de aplicacion al contrato JSON. Estado: implementado.
+2. Implementar `Documentos` para subir y consultar CV y cartas desde la app. Estado: implementado.
+3. Agregar comando `--apply-approved` en modo `--dry-run`. Estado: implementado.
+4. Crear una seccion JSON de seguimiento de aplicaciones. Estado: implementado como `aplicaciones`.
+5. Implementar lectura de vacantes autorizadas. Estado: implementado para decisiones `aprobada`.
+6. Validar existencia de CV y carta antes de intentar aplicar. Estado: implementado.
+7. Crear modulo de aplicacion. Estado: implementado inicialmente en `botjobs/apply.py`.
+8. Implementar aplicador base que abre URL y detecta barreras. Estado: implementado; detecta barreras, boton de aplicacion, archivo y texto.
+9. Implementar primer portal en modo asistido. Estado: implementados adaptadores iniciales para los cinco portales; pendiente validacion real.
+10. Registrar evidencia y resultado por intento. Estado: implementado con captura PNG y resultado estructurado.
+11. Agregar `--submit` como bandera separada y bloqueada por autorizacion. Estado: implementado; requiere `--confirm-submit ENVIAR` y registro idempotente.
+12. Repetir portal por portal. Estado: implementacion inicial completa; pendiente prueba operativa por portal.
+13. Agregar metricas de aplicaciones: preparadas, aplicadas, fallidas e intervenciones. Estado: implementado.
 
 ## Criterio de exito
 

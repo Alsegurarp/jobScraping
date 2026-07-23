@@ -37,9 +37,13 @@ class ExtractLinksParams(RequestModel):
     research: bool = False
 
 
+class SubmitApplicationsParams(RequestModel):
+    confirmation: Literal["ENVIAR"]
+
+
 class RunRecord(BaseModel):
     run_id: str
-    type: Literal["search", "extract_links", "apply_approved_dry_run"]
+    type: Literal["search", "extract_links", "apply_approved_dry_run", "prepare_applications", "retry_applications", "submit_applications"]
     status: Literal["pending", "running", "completed", "failed"]
     command: list[str]
     params: dict[str, Any]
@@ -64,3 +68,32 @@ class ResultsPayload(BaseModel):
     run_id: str | None = None
     output_file: str
     sheets: dict[str, ResultSheet]
+
+
+class LetterContent(BaseModel):
+    letter_id: str
+    content: str
+
+
+class JobDecision(RequestModel):
+    url: str = Field(min_length=1)
+    decision: Literal["aprobada", "descartada", "revision"]
+    note: str = Field(default="", max_length=250)
+    cv_id: str | None = None
+
+
+class JobDecisionRecord(BaseModel):
+    job_key: str
+    url: str
+    decision: Literal["aprobada", "descartada", "revision"]
+    note: str = ""
+    updated_at: datetime
+    cv_id: str = ""
+
+
+class CvDocument(BaseModel):
+    cv_id: str
+    filename: str
+    size_bytes: int
+    uploaded_at: datetime
+    active: bool = False

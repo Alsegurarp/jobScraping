@@ -56,3 +56,23 @@ def build_apply_dry_run_command() -> list[str]:
         config.OUTPUT_FILE,
         "--dry-run",
     ]
+
+
+def build_prepare_applications_command() -> list[str]:
+    return [
+        *_base_command(),
+        "--apply-approved",
+        "--profile",
+        config.PROFILE_FILE,
+        "--jobs",
+        config.OUTPUT_FILE,
+        "--browser",
+    ]
+
+
+def build_retry_applications_command() -> list[str]:
+    return [*build_prepare_applications_command(), "--retry-intervention"]
+
+
+def build_submit_applications_command() -> list[str]:
+    return [*build_prepare_applications_command(), "--submit", "--confirm-submit", "ENVIAR"]

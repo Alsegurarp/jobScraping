@@ -6,6 +6,9 @@ from pydantic import ValidationError
 from backend.schemas import ExtractLinksParams, SearchParams
 from backend.services.command_builder import (
     build_apply_dry_run_command,
+    build_prepare_applications_command,
+    build_retry_applications_command,
+    build_submit_applications_command,
     build_extract_links_command,
     build_search_command,
 )
@@ -74,3 +77,15 @@ def test_other_commands_have_fixed_paths():
         "output/botjobs_resultados.json",
         "--dry-run",
     ]
+    assert build_prepare_applications_command() == [
+        sys.executable,
+        "bot_jobs.py",
+        "--apply-approved",
+        "--profile",
+        "profile.example.json",
+        "--jobs",
+        "output/botjobs_resultados.json",
+        "--browser",
+    ]
+    assert build_retry_applications_command()[-2:] == ["--browser", "--retry-intervention"]
+    assert build_submit_applications_command()[-4:] == ["--browser", "--submit", "--confirm-submit", "ENVIAR"]

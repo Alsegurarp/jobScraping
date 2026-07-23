@@ -19,7 +19,7 @@ python -m pip install -r .\requirements-dev.txt
 ## Iniciar el backend
 
 ```powershell
-python -m uvicorn backend.main:app --reload
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 La documentacion interactiva queda disponible en `http://127.0.0.1:8000/docs`.
@@ -28,7 +28,7 @@ El timeout predeterminado de cada corrida es de 1800 segundos. Puede configurars
 
 ```powershell
 $env:BOTJOBS_RUN_TIMEOUT_SECONDS = "3600"
-python -m uvicorn backend.main:app --reload
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 ## Ejemplos
@@ -69,13 +69,58 @@ curl http://127.0.0.1:8000/results/latest
 curl http://127.0.0.1:8000/runs/REEMPLAZAR_CON_RUN_ID/results
 ```
 
+Consultar una carta por su identificador:
+
+```bash
+curl http://127.0.0.1:8000/letters/REEMPLAZAR_CON_CARTA_ID
+```
+
+Guardar decision manual por vacante:
+
+```bash
+curl -X POST http://127.0.0.1:8000/jobs/decision -H "Content-Type: application/json" -d "{\"url\":\"https://example.com/job\",\"decision\":\"aprobada\"}"
+```
+
+Decisiones validas: `aprobada`, `descartada`, `revision`. Se guardan localmente en `runtime/decisions.json` y se mezclan al consultar resultados.
+
+Subir, listar y consultar CV:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/documents/cv?filename=Rene_Alexis_Segura_CV.pdf" -H "Content-Type: application/pdf" --data-binary "@Rene_Alexis_Segura_CV.pdf"
+curl http://127.0.0.1:8000/documents/cv
+curl -X POST http://127.0.0.1:8000/documents/cv/REEMPLAZAR_CON_CV_ID/active
+curl http://127.0.0.1:8000/documents/cv/REEMPLAZAR_CON_CV_ID
+```
+
+Los CV se validan como PDF, tienen un limite de 10 MB, uno queda marcado como activo y permanecen en `runtime/documents/cv/`.
+
 Placeholder de aplicacion, solo en modo simulacion:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/runs/apply-approved/dry-run
 ```
 
-El CLI aun no implementa `--apply-approved` ni `--dry-run`. Por ahora esta corrida terminara como `failed` y conservara el error; no aplica ni envia ninguna vacante.
+El CLI valida decisiones aprobadas, CV activo y carta sin abrir el navegador ni modificar resultados.
+
+Para preparar formularios compatibles y guardar evidencia, sin enviar:
+
+```bash
+curl -X POST http://127.0.0.1:8000/runs/apply-approved/prepare
+```
+
+Reintentar solo aplicaciones en intervención:
+
+```bash
+curl -X POST http://127.0.0.1:8000/runs/apply-approved/retry
+```
+
+Enviar aplicaciones aprobadas con confirmación explícita:
+
+```bash
+curl -X POST http://127.0.0.1:8000/runs/apply-approved/submit -H "Content-Type: application/json" -d "{\"confirmation\":\"ENVIAR\"}"
+```
+
+El envío se bloquea para dominios no soportados, materiales faltantes y vacantes con un envío previo confirmado o incierto.
 
 ## Estados y archivos
 

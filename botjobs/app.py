@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from .cache import load_ignored_urls, remember_ignored_urls
+from .browser import open_portal_session
 from .extractors import extract_links
 from .extractor_utils import configure_cache
 from .letters import cover_letter, recruiter_message
@@ -13,13 +14,14 @@ from .results import write_results
 from .search import auto_search
 from .utils import clean_text, slug
 from .workbook import create_template, read_sheet
+from .apply import apply_approved
 
 
 def execution_summary(output_path, detected, shortlisted, discarded, intervention_rows):
     extracted_ok = sum(1 for row in detected if clean_text(row.get("estado_extraccion")) == "ok")
     cache_hits = sum(1 for row in detected if clean_text(row.get("cache_hit")).lower() == "si")
     ignored = sum(1 for row in detected if clean_text(row.get("ignorar_en_futuro")).lower() == "si")
-    letters = sum(1 for row in shortlisted if clean_text(row.get("carta_de_interes_al_rol")))
+    letters = sum(1 for row in shortlisted if clean_text(row.get("carta_id")))
     return {
         "output_path": str(output_path),
         "detectadas": len(detected),
@@ -75,7 +77,7 @@ def result_row(profile, row, score, status, matched_skills, flags, letter_path="
         "cache_hit": clean_text(row.get("cache_hit")),
         "motivo_intervencion": motivo,
         "accion_recomendada": accion,
-        "carta_de_interes_al_rol": str(letter_path) if letter_path else "",
+        "carta_id": Path(letter_path).stem if letter_path else "",
         "mensaje_corto_reclutador": message,
         "razon_menos_250": short_reason(status, score, flags, matched_skills),
         "matched_skills": ", ".join(matched_skills),
@@ -223,6 +225,12 @@ def main():
     parser.add_argument("--cache-ttl-hours", type=int, default=120, help="Horas de vida del cache HTML.")
     parser.add_argument("--create-template", action="store_true", help="Crea una plantilla .xlsx de vacantes.")
     parser.add_argument("--demo", action="store_true")
+    parser.add_argument("--apply-approved", action="store_true", help="Procesa solo vacantes aprobadas por el usuario.")
+    parser.add_argument("--dry-run", action="store_true", help="Valida aplicaciones sin modificar resultados ni abrir el navegador.")
+    parser.add_argument("--submit", action="store_true", help="Envia aplicaciones cuando exista un adaptador seguro.")
+    parser.add_argument("--confirm-submit", default="", help="Confirmacion literal ENVIAR requerida con --submit.")
+    parser.add_argument("--retry-intervention", action="store_true", help="Reintenta solo aplicaciones que requieren intervencion.")
+    parser.add_argument("--login-portal", choices=["linkedin", "indeed", "occ", "computrabajo", "glassdoor"], help="Abre una sesion persistente para intervencion manual.")
     args = parser.parse_args()
 
     if args.create_template:
@@ -232,8 +240,26 @@ def main():
     if args.demo:
         demo()
         return
+    if args.login_portal:
+        raise SystemExit(open_portal_session(args.login_portal))
+    if args.apply_approved:
+        try:
+            attempts = apply_approved(
+                Path(args.jobs),
+                dry_run=args.dry_run,
+                browser=args.browser,
+                submit=args.submit,
+                confirmation=args.confirm_submit,
+                retry_intervention=args.retry_intervention,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(f"Aplicaciones autorizadas: {len(attempts)}")
+        for attempt in attempts:
+            print(f"- {attempt['estado_aplicacion']}: {attempt['empresa']} - {attempt['resultado_aplicacion']}")
+        return
 
-    if args.browser and not (args.extract_links or args.auto_search):
+    if args.browser and not (args.extract_links or args.auto_search or args.apply_approved):
         parser.error("--browser requiere --extract-links o --auto-search")
 
     portal_names = [item.strip() for item in args.portals.split(",") if item.strip()]

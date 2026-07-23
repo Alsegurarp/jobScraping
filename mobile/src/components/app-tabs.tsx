@@ -35,6 +35,10 @@ export default function AppTabs() {
           renderingMode="template"
         />
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="documents">
+        <NativeTabs.Trigger.Label>Documentos</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="doc.text" md="description" />
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

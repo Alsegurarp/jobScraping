@@ -18,7 +18,7 @@ def saved_run(store, run_id):
         command=["python", "bot_jobs.py"],
         params={},
         created_at=datetime.now(timezone.utc),
-        output_file="output/botjobs_resultados.json",
+        output_file="output/test_process_results.json",
     )
     store.save(run)
     return run

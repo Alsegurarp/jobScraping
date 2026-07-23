@@ -1,7 +1,7 @@
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import type { Portal, SearchParams } from '@/api/types';
 import { FeedbackBanner } from '@/components/feedback-banner';
@@ -39,6 +39,15 @@ export default function ExecuteScreen() {
   const runExtraction = async () => {
     if (await actions.startExtractLinks({ browser: params.browser, research: params.research })) router.push('/results');
   };
+
+  const confirmSubmit = () => Alert.alert(
+    'Enviar aplicaciones',
+    'Solo se enviarán vacantes aprobadas con CV y carta. Los envíos no se pueden deshacer.',
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Enviar aprobadas', style: 'destructive', onPress: () => void actions.submitApplications() },
+    ],
+  );
 
   return (
     <Page>
@@ -88,6 +97,9 @@ export default function ExecuteScreen() {
         <ThemedText selectable style={styles.sectionTitle}>Otras acciones</ThemedText>
         <CommandButton label="Extraer links de la plantilla" icon="link" onPress={runExtraction} disabled={actions.loading || !actions.connected} />
         <CommandButton label="Simular aplicaciones aprobadas" icon="doc.text.magnifyingglass" onPress={actions.startApplyDryRun} disabled={actions.loading || !actions.connected} />
+        <CommandButton label="Preparar aplicaciones aprobadas" icon="doc.badge.gearshape" onPress={actions.prepareApplications} disabled={actions.loading || !actions.connected} />
+        <CommandButton label="Reintentar intervenciones" icon="arrow.clockwise" onPress={actions.retryApplications} disabled={actions.loading || !actions.connected} />
+        <CommandButton label="Enviar aplicaciones aprobadas" icon="paperplane" onPress={confirmSubmit} disabled={actions.loading || !actions.connected} />
         <CommandButton label="Comprobar conexión" icon="arrow.clockwise" onPress={actions.refresh} disabled={actions.loading} />
       </View>
     </Page>
@@ -112,7 +124,7 @@ function CommandButton({ label, icon, onPress, disabled, primary = false }: { la
 }
 
 const statusLabel = (status: string) => ({ pending: 'Pendiente', running: 'Ejecutando', completed: 'Completada', failed: 'Fallida' }[status] || status);
-const runTypeLabel = (type: string) => ({ search: 'Búsqueda', extract_links: 'Extracción', apply_approved_dry_run: 'Simulación' }[type] || type);
+const runTypeLabel = (type: string) => ({ search: 'Búsqueda', extract_links: 'Extracción', apply_approved_dry_run: 'Simulación', prepare_applications: 'Preparación', retry_applications: 'Reintento', submit_applications: 'Envío' }[type] || type);
 
 const styles = StyleSheet.create({
   section: { gap: 12 }, sectionTitle: { fontSize: 18, lineHeight: 24, fontWeight: '700' },

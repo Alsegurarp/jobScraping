@@ -2,6 +2,8 @@
 
 La app movil esta construida con Expo y React Native. Consume exclusivamente las acciones permitidas por FastAPI y muestra los resultados JSON como vistas nativas.
 
+La pestaña `Documentos` permite subir, consultar y activar CV. En `Resultados` puede elegirse un CV específico por vacante; si no se elige, se usa el CV activo. La vista `Seguimiento` muestra estados y evidencias. El envío exige confirmación explícita.
+
 ## 1. Iniciar el backend para la red local
 
 Desde la raiz del proyecto:
@@ -82,21 +84,37 @@ Estado: implementado.
 - Consultar resumen, detectadas, preseleccionadas, descartadas, aplicadas e intervenciones.
 - Consultar historial por `run_id`.
 - Abrir la URL de una vacante desde su boton.
+- Consultar la carta generada desde `Ver carta de empleo` en cada vacante preseleccionada.
 
 ### Paso 2 - CV y cartas dentro de la aplicacion
 
-Estado: pendiente.
+Estado: en progreso.
 
-- Agregar una vista `Documentos` en la app.
-- Subir uno o varios CV en PDF al backend local.
-- Listar, consultar y seleccionar el CV activo que se enviara.
-- Consultar las cartas generadas desde la app, sin mostrar rutas de Windows.
+Implementado:
+
+- Subir uno o varios CV en PDF desde la pantalla `Resultados`.
+- Listar los CV guardados localmente.
+- Consultar cada PDF con `Ver CV`.
+- Seleccionar el CV activo que se enviara.
 - Guardar metadatos locales con identificadores estables como `cv_id` y `carta_id`.
+
+Pendiente, como tareas separadas:
+
+- Agregar una vista general `Documentos` si resulta necesaria despues de validar el flujo en `Resultados`.
+- Agregar una biblioteca general para consultar y administrar todas las cartas, ademas del visor por vacante ya implementado.
 - Asociar cada vacante con `cv_id` y `carta_id`, no con rutas del sistema operativo.
 - Permitir previsualizar y descargar el CV o la carta seleccionada.
 - Mantener los archivos sensibles locales y validar tipo, tamano y nombre al subirlos.
 
-La automatizacion de aplicaciones no debe comenzar hasta completar este paso y validar que cada vacante autorizada tenga documentos accesibles desde la app.
+### Paso 3 - Decision manual por vacante
+
+Estado: implementado.
+
+- Cada vacante con URL puede marcarse como `Aprobar`, `Descartar` o `Revisar`.
+- La decision se guarda localmente en el backend por URL de vacante.
+- Al volver a consultar resultados, la decision aparece como `decision_usuario`.
+
+La automatizacion de aplicaciones no debe comenzar hasta validar que cada vacante aprobada tenga CV activo y carta accesible desde la app.
 
 ## Verificacion
 

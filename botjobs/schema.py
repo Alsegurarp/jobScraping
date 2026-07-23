@@ -57,6 +57,7 @@ RESULT_COLUMNS = [
     "cache_hit",
     "motivo_intervencion",
     "accion_recomendada",
+    "carta_id",
     "mensaje_corto_reclutador",
     "razon_menos_250",
     "matched_skills",

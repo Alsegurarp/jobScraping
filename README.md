@@ -56,6 +56,14 @@ Implementado:
 - Memoria local de vacantes descartadas mediante `cache/ignored_urls.json`.
 - JSON con resumen, vacantes detectadas, preseleccionadas, descartadas, aplicadas, intervenciones y empresas investigadas.
 - Cartas `.md` y mensajes cortos solo para vacantes `preseleccionada`.
+- Decision manual por vacante, CV activo por identificador y preparacion asistida de aplicaciones aprobadas.
+- Pantalla movil de Documentos y selección de CV por vacante.
+- Seguimiento de aplicaciones, evidencia visual, métricas e historial persistente.
+- Confirmación explícita en la app antes de solicitar envíos.
+- `--apply-approved --dry-run` valida autorizacion, CV y carta; `--browser` prepara campos compatibles, detecta barreras, guarda captura y registra el seguimiento.
+- `--login-portal PORTAL` abre un perfil persistente para resolver login o captcha manualmente.
+- `--retry-intervention` reintenta solo aplicaciones detenidas.
+- `--submit --confirm-submit ENVIAR` habilita envio controlado; bloquea dominios desconocidos y vacantes ya enviadas o con envio incierto.
 - Ranking por industria, salario, horario, remoto, ubicacion, seniority y skills.
 - Filtros para no generar cartas de vacantes descartadas.
 
@@ -66,7 +74,7 @@ Limitaciones actuales:
 - La investigacion de empresa es basica y no usa IA.
 - Las cartas usan plantillas simples, no redaccion inteligente con modelo de lenguaje.
 - No existe sincronizacion directa con Google Sheets.
-- No aplica a vacantes ni envia correos.
+- No envia formularios ni correos: `--submit` falla de forma segura hasta que exista un adaptador verificado por portal.
 
 ## Crear plantilla
 
@@ -275,9 +283,11 @@ Integraciones de portales:
 Automatizacion de aplicacion:
 
 - Ver plan detallado en [FASE2.md](FASE2.md).
-- Aplicar automaticamente a vacantes preseleccionadas despues de autorizacion explicita del usuario.
-- Registrar estado real de aplicacion: pendiente, aplicada, fallida, requiere accion manual.
-- Adjuntar CV correcto por vacante cuando existan variantes de CV.
+- La app ya permite guardar decision manual por vacante: aprobada, descartada o revision.
+- Preparacion asistida implementada para vacantes aprobadas: detecta el boton de aplicacion, carga CV, pega carta y guarda evidencia cuando el formulario lo permite.
+- Seguimiento JSON implementado en `aplicaciones`: autorizada, preparada u omitida y su motivo.
+- Adaptadores iniciales implementados para LinkedIn, Indeed, OCC, Computrabajo y Glassdoor; requieren validacion operativa con cuentas y vacantes reales antes de considerarse estables.
+- Pendiente: seleccionar un CV distinto por vacante; actualmente se usa el CV activo.
 - Enviar emails a reclutadores solo cuando exista correo de contacto y el usuario lo autorice.
 
 IA y materiales:

@@ -52,7 +52,7 @@ export default function HistoryScreen() {
   );
 }
 
-const typeLabel = (type: string) => ({ search: 'Búsqueda', extract_links: 'Extracción de links', apply_approved_dry_run: 'Simulación de aplicaciones' }[type] || type);
+const typeLabel = (type: string) => ({ search: 'Búsqueda', extract_links: 'Extracción de links', apply_approved_dry_run: 'Simulación de aplicaciones', prepare_applications: 'Preparación de aplicaciones', retry_applications: 'Reintento de aplicaciones', submit_applications: 'Envío de aplicaciones' }[type] || type);
 const statusLabel = (status: string) => ({ pending: 'Pendiente', running: 'Ejecutando', completed: 'Completada', failed: 'Fallida' }[status] || status);
 const iconForType = (type: string) => type === 'search' ? 'magnifyingglass' : type === 'extract_links' ? 'link' : 'doc.text.magnifyingglass';
 const formatDate = (value: string) => new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));

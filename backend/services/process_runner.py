@@ -79,8 +79,6 @@ class ProcessRunner:
                 self.store.save(run)
 
     def _snapshot_results(self, run: RunRecord) -> None:
-        if run.type not in {"search", "extract_links"}:
-            return
         source = config.BASE_DIR / run.output_file
         if not source.exists():
             return

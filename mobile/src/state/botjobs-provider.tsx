@@ -13,6 +13,9 @@ type BotJobsState = {
   startSearch: (params: SearchParams) => Promise<boolean>;
   startExtractLinks: (params: { browser: boolean; research: boolean }) => Promise<boolean>;
   startApplyDryRun: () => Promise<boolean>;
+  prepareApplications: () => Promise<boolean>;
+  retryApplications: () => Promise<boolean>;
+  submitApplications: () => Promise<boolean>;
   loadRunResults: (run: RunRecord) => Promise<void>;
 };
 
@@ -111,6 +114,9 @@ export function BotJobsProvider({ children }: { children: ReactNode }) {
       startSearch: (params) => execute(() => botJobsApi.search(params)),
       startExtractLinks: (params) => execute(() => botJobsApi.extractLinks(params)),
       startApplyDryRun: () => execute(() => botJobsApi.applyDryRun()),
+      prepareApplications: () => execute(() => botJobsApi.prepareApplications()),
+      retryApplications: () => execute(() => botJobsApi.retryApplications()),
+      submitApplications: () => execute(() => botJobsApi.submitApplications()),
       loadRunResults,
     }),
     [activeRun, connected, error, execute, loadRunResults, loading, refresh, results, runs],
