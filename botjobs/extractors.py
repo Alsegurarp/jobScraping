@@ -109,6 +109,16 @@ def extract_link(row):
 
 
 def extract_links(rows, use_browser=False):
-    if use_browser:
-        return [extract_with_browser(row) for row in rows]
-    return [extract_link(row) for row in rows]
+    extracted = []
+    for row in rows:
+        is_search_error = (
+            clean_text(row.get("fuente_extraccion")) == "auto_search"
+            and clean_text(row.get("estado_extraccion")) != "pendiente"
+        )
+        if is_search_error:
+            extracted.append(normalize_job_row(row, source="auto_search"))
+        elif use_browser:
+            extracted.append(extract_with_browser(row))
+        else:
+            extracted.append(extract_link(row))
+    return extracted

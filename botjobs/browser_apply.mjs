@@ -107,6 +107,12 @@ try {
     let submitAttempted = false;
 
     if (prepared && submitFlag === "submit") {
+      const finalHostname = new URL(page.url()).hostname.toLowerCase();
+      const finalDomainAllowed = adapter.hosts.some((host) => finalHostname === host || finalHostname.endsWith(`.${host}`));
+      if (!finalDomainAllowed) {
+        state = "requiere_intervencion";
+        result = "Redireccion a dominio no soportado; envio bloqueado";
+      } else {
       let submitted = false;
       for (const name of adapter.submit) {
         const button = page.getByRole("button", { name }).first();
@@ -120,8 +126,10 @@ try {
       }
       const finalText = (await page.locator("body").innerText().catch(() => "")).toLowerCase();
       const confirmed = submitted && adapter.success.some((pattern) => finalText.includes(pattern));
+      await page.screenshot({ path: evidencePath, fullPage: true }).catch(() => {});
       state = confirmed ? "aplicada" : "requiere_intervencion";
       result = confirmed ? "Portal confirmó el envío" : "No se pudo confirmar el envío";
+      }
     }
     console.log(JSON.stringify({
       ok: ["preparada", "aplicada"].includes(state),

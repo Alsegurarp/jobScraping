@@ -1,7 +1,7 @@
 import html
 import re
 from dataclasses import dataclass
-from urllib.parse import parse_qs, quote_plus, unquote, urljoin, urlparse
+from urllib.parse import parse_qs, parse_qsl, quote_plus, urlencode, unquote, urljoin, urlparse, urlsplit, urlunsplit
 
 from .extractor_utils import fetch_html, html_to_text
 from .schema import normalize_job_row
@@ -108,6 +108,28 @@ def unwrap_redirect(url):
     return url
 
 
+TRACKING_QUERY_KEYS = {
+    "from", "ref", "source", "trackingid", "trk", "campaign", "campaignid",
+}
+
+
+def canonical_job_url(url):
+    parsed = urlsplit(clean_text(unwrap_redirect(url)))
+    scheme = parsed.scheme.lower() or "https"
+    host = (parsed.hostname or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    if parsed.port and not (scheme == "https" and parsed.port == 443) and not (scheme == "http" and parsed.port == 80):
+        host = f"{host}:{parsed.port}"
+    path = parsed.path.rstrip("/") or "/"
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if not key.lower().startswith("utm_") and key.lower() not in TRACKING_QUERY_KEYS
+    ]
+    return urlunsplit((scheme, host, path, urlencode(sorted(query)), ""))
+
+
 def matches_portal(url, portal):
     host = urlparse(url).netloc.lower()
     return any(pattern in host for pattern in portal.host_patterns)
@@ -149,10 +171,13 @@ def dedupe_rows(rows, max_results):
     unique = []
     for row in rows:
         url = clean_text(row.get("url"))
-        if not url or url in seen:
+        if not url:
             continue
-        seen.add(url)
-        unique.append(row)
+        canonical = canonical_job_url(url)
+        if canonical in seen:
+            continue
+        seen.add(canonical)
+        unique.append({**row, "url": canonical})
         if len(unique) >= max_results:
             break
     return unique

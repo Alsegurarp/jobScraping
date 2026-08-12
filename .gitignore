@@ -3,6 +3,7 @@ output/
 tmp/
 cache/
 runtime/
+backups/
 .test-tmp/
 .demo-output/
 __pycache__/

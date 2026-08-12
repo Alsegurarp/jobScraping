@@ -1,4 +1,5 @@
 import argparse
+import json
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -12,9 +13,13 @@ from .ranking import detect_language, enrich_row, parse_date, score_job, short_r
 from .research import research_company
 from .results import write_results
 from .search import auto_search
+from .schema import validate_job_row
 from .utils import clean_text, slug
 from .workbook import create_template, read_sheet
 from .apply import apply_approved
+from .doctor import Diagnostic, print_diagnostics, run_diagnostics
+from .local_state import CvStore, DecisionStore
+from .backup import create_backup, restore_backup
 
 
 def execution_summary(output_path, detected, shortlisted, discarded, intervention_rows):
@@ -46,6 +51,18 @@ def print_execution_report(summary):
     print(f"- Cartas generadas: {summary['cartas_generadas']}")
     print(f"- Cache hits: {summary['cache_hits']}")
     print(f"- Ignoradas en futuro: {summary['ignoradas']}")
+
+
+def sort_result_rows(rows):
+    return sorted(
+        rows,
+        key=lambda item: (
+            -int(item.get("score") or 0),
+            clean_text(item.get("empresa")).casefold(),
+            clean_text(item.get("nombre_de_la_vacante")).casefold(),
+            clean_text(item.get("url")).casefold(),
+        ),
+    )
 
 
 def result_row(profile, row, score, status, matched_skills, flags, letter_path="", message=""):
@@ -144,6 +161,7 @@ def run(
         rows_to_extract = [row for row in rows if clean_text(row.get("ignorar_en_futuro")).lower() != "si"]
         ignored_rows = [row for row in rows if clean_text(row.get("ignorar_en_futuro")).lower() == "si"]
         rows = [*extract_links(rows_to_extract, use_browser=browser_enabled), *ignored_rows]
+    rows = [validate_job_row(row) for row in rows]
     output_dir.mkdir(parents=True, exist_ok=True)
     letters_dir = output_dir / "cartas"
     letters_dir.mkdir(parents=True, exist_ok=True)
@@ -189,9 +207,9 @@ def run(
 
     remember_ignored_urls(detected)
 
-    detected.sort(key=lambda item: item["score"], reverse=True)
-    shortlisted.sort(key=lambda item: item["score"], reverse=True)
-    discarded.sort(key=lambda item: item["score"], reverse=True)
+    detected = sort_result_rows(detected)
+    shortlisted = sort_result_rows(shortlisted)
+    discarded = sort_result_rows(discarded)
     for index, item in enumerate(shortlisted, 1):
         item["prioridad"] = index
     for index, item in enumerate(detected, 1):
@@ -206,12 +224,24 @@ def demo():
     template = Path("vacantes.template.xlsx")
     if not template.exists():
         create_template(template)
-    _output_path, summary = run(Path("profile.example.json"), template, Path("output"), research_enabled=False)
+    project_root = Path(__file__).resolve().parent.parent
+    profile = project_root / "profile.example.json"
+    _output_path, summary = run(profile, template, Path("output"), research_enabled=False)
     print_execution_report(summary)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Bot local para rankear vacantes tech y generar cartas.")
+    parser.add_argument("command", nargs="?", choices=["doctor", "decisions", "cv", "backup"], help="Comando local.")
+    parser.add_argument("action", nargs="?", help="Accion del comando: list, set, add, activate o remove.")
+    parser.add_argument("--runtime", default="runtime", help="Directorio de estado local.")
+    parser.add_argument("--url", default="")
+    parser.add_argument("--decision", choices=["aprobada", "descartada", "revision"])
+    parser.add_argument("--note", default="")
+    parser.add_argument("--cv-id", default="")
+    parser.add_argument("--file", default="")
+    parser.add_argument("--confirm", default="", help="Confirmacion literal BORRAR para eliminar.")
+    parser.add_argument("--project", default=".", help="Raiz del proyecto para respaldo o restauracion.")
     parser.add_argument("--profile", default="profile.example.json")
     parser.add_argument("--jobs", default="vacantes.template.xlsx")
     parser.add_argument("--out", default="output")
@@ -233,6 +263,66 @@ def main():
     parser.add_argument("--login-portal", choices=["linkedin", "indeed", "occ", "computrabajo", "glassdoor"], help="Abre una sesion persistente para intervencion manual.")
     args = parser.parse_args()
 
+    if args.command == "doctor":
+        results = run_diagnostics(
+            Path(args.profile),
+            None if args.auto_search else Path(args.jobs),
+            Path(args.out),
+            browser_required=args.browser,
+        )
+        print_diagnostics(results)
+        raise SystemExit(Diagnostic.exit_code(results))
+
+    if args.command == "decisions":
+        store = DecisionStore(Path(args.runtime))
+        if args.action == "list":
+            result = store.list()
+        elif args.action == "set":
+            if not args.url or not args.decision:
+                parser.error("decisions set requiere --url y --decision")
+            result = store.set(args.url, args.decision, args.note, args.cv_id)
+        elif args.action == "remove":
+            if not args.url:
+                parser.error("decisions remove requiere --url")
+            result = {"removed": store.remove(args.url, args.confirm == "BORRAR")}
+        else:
+            parser.error("decisions requiere list, set o remove")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+
+    if args.command == "cv":
+        store = CvStore(Path(args.runtime))
+        if args.action == "list":
+            result = store.list()
+        elif args.action == "add":
+            if not args.file:
+                parser.error("cv add requiere --file")
+            result = store.add(Path(args.file))
+        elif args.action == "activate":
+            if not args.cv_id:
+                parser.error("cv activate requiere --cv-id")
+            result = store.activate(args.cv_id)
+        elif args.action == "remove":
+            if not args.cv_id:
+                parser.error("cv remove requiere --cv-id")
+            result = {"removed": store.remove(args.cv_id, args.confirm == "BORRAR")}
+        else:
+            parser.error("cv requiere list, add, activate o remove")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+
+    if args.command == "backup":
+        if not args.file:
+            parser.error("backup requiere --file")
+        if args.action == "create":
+            result = create_backup(Path(args.project), Path(args.file))
+        elif args.action == "restore":
+            result = restore_backup(Path(args.project), Path(args.file), args.confirm == "RESTAURAR")
+        else:
+            parser.error("backup requiere create o restore")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return
+
     if args.create_template:
         create_template(Path(args.jobs))
         print(f"Plantilla creada: {args.jobs}")
@@ -246,6 +336,8 @@ def main():
         try:
             attempts = apply_approved(
                 Path(args.jobs),
+                runtime_dir=Path(args.runtime),
+                output_dir=Path(args.out),
                 dry_run=args.dry_run,
                 browser=args.browser,
                 submit=args.submit,

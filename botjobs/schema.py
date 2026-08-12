@@ -29,6 +29,13 @@ INPUT_COLUMNS = [
 
 JOB_CONTRACT_COLUMNS = INPUT_COLUMNS[:]
 
+EXTRACTION_STATES = {
+    "pendiente", "ok", "captcha", "login_requerido", "bloqueado",
+    "navegador_bloqueado", "navegador_no_disponible", "error_navegador",
+    "error_red", "estructura_no_reconocida", "sin_descripcion", "sin_url",
+    "ignorada_previamente",
+}
+
 LEGACY_COLUMN_ALIASES = {
     "nombre_de_la_vacante": "titulo",
     "industria": "industria_detectada",
@@ -92,3 +99,14 @@ def normalize_job_row(row, source="xlsx"):
     normalized["motivo_intervencion"] = clean_text(normalized.get("motivo_intervencion"))
     normalized["accion_recomendada"] = clean_text(normalized.get("accion_recomendada"))
     return normalized
+
+
+def validate_job_row(row):
+    missing = [column for column in JOB_CONTRACT_COLUMNS if column not in row]
+    extra = [column for column in row if column not in JOB_CONTRACT_COLUMNS]
+    if missing or extra:
+        raise ValueError(f"Contrato de vacante invalido; faltantes={missing}, extra={extra}")
+    state = clean_text(row.get("estado_extraccion"))
+    if state not in EXTRACTION_STATES:
+        raise ValueError(f"estado_extraccion no soportado: {state}")
+    return row

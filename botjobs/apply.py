@@ -23,6 +23,8 @@ PORTAL_HOSTS = {
     "glassdoor": ("glassdoor.com", "glassdoor.com.mx"),
 }
 
+SEND_ENABLED_PORTALS = frozenset({"indeed", "linkedin", "occ", "computrabajo", "glassdoor"})
+
 
 def apply_approved(
     results_path,
@@ -70,34 +72,59 @@ def apply_approved(
                 ("carta", letter_id and letter.is_file()),
             ) if not value
         ]
+        if submit and portal not in SEND_ENABLED_PORTALS:
+            missing.append("envio no habilitado")
         if submit and key in sent:
             missing.append("envio ya registrado")
         state = "omitida" if missing else "autorizada"
         result = f"Falta {', '.join(missing)}" if missing else "Lista para preparar"
         evidence = ""
         final_url = ""
-        if browser and not missing:
+        if browser and not dry_run and not missing:
             evidence_path = runtime_dir / "evidence" / f"{sha256(url.encode()).hexdigest()[:16]}.png"
-            prepared = prepare_application(
-                url,
-                runtime_dir / "documents" / "cv" / f"{cv['cv_id']}.pdf",
-                letter,
-                evidence_path,
-                portal,
-                runtime_dir / "browser-profiles" / portal,
-                submit=submit,
-            )
+            if submit:
+                sent[key] = {
+                    "url": url,
+                    "estado": "en_progreso",
+                    "fecha_aplicacion": datetime.now().isoformat(timespec="seconds"),
+                    "evidencia": "",
+                }
+                _write_json(runtime_dir / "submitted_applications.json", sent)
+            try:
+                prepared = prepare_application(
+                    url,
+                    runtime_dir / "documents" / "cv" / f"{cv['cv_id']}.pdf",
+                    letter,
+                    evidence_path,
+                    portal,
+                    runtime_dir / "browser-profiles" / portal,
+                    submit=submit,
+                )
+            except Exception as exc:
+                if submit:
+                    sent[key].update({"estado": "incierto", "error": str(exc)})
+                    _write_json(runtime_dir / "submitted_applications.json", sent)
+                raise
             state = prepared.get("estado", "fallida")
             result = prepared.get("resultado", "Error desconocido")
             evidence = prepared.get("evidencia", "")
             final_url = prepared.get("url_final", "")
-            if state == "aplicada" or prepared.get("submit_intentado"):
-                sent[key] = {
-                    "url": url,
-                    "estado": state,
-                    "fecha_aplicacion": datetime.now().isoformat(timespec="seconds"),
-                    "evidencia": evidence,
-                }
+            if submit:
+                submitted = bool(prepared.get("submit_intentado"))
+                if final_url and not _url_allowed_for_portal(final_url, portal):
+                    state = "requiere_intervencion"
+                    result = "Redireccion a dominio no soportado; envio bloqueado"
+                    if submitted:
+                        sent[key].update({"estado": "incierto", "evidencia": evidence, "url_final": final_url})
+                    else:
+                        sent.pop(key, None)
+                elif state == "aplicada" and submitted:
+                    sent[key].update({"estado": "confirmado", "evidencia": evidence, "url_final": final_url})
+                elif submitted:
+                    sent[key].update({"estado": "incierto", "evidencia": evidence, "url_final": final_url})
+                else:
+                    sent.pop(key, None)
+                _write_json(runtime_dir / "submitted_applications.json", sent)
         attempts.append({
             "url": url,
             "empresa": job.get("empresa", ""),
@@ -123,7 +150,7 @@ def apply_approved(
     }
     _update_application_metrics(payload, application_rows)
     if not dry_run:
-        results_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        _write_json(results_path, payload)
         if sent:
             _write_json(runtime_dir / "submitted_applications.json", sent)
     return attempts
@@ -141,8 +168,9 @@ def _cv_documents(runtime_dir):
 
 
 def _write_json(path, payload):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    from .local_state import _write_json as atomic_write_json
+
+    atomic_write_json(path, payload)
 
 
 def _portal_for(url):
@@ -151,6 +179,14 @@ def _portal_for(url):
         portal for portal, hosts in PORTAL_HOSTS.items()
         if any(host == item or host.endswith(f".{item}") for item in hosts)
     ), "")
+
+
+def _url_allowed_for_portal(url, portal):
+    host = (urlparse(url).hostname or "").lower()
+    return any(
+        host == allowed or host.endswith(f".{allowed}")
+        for allowed in PORTAL_HOSTS.get(portal, ())
+    )
 
 
 def _update_application_metrics(payload, attempts):

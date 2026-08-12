@@ -1,5 +1,7 @@
 import json
+import os
 from datetime import datetime
+from uuid import uuid4
 
 from .schema import RESEARCH_COLUMNS, RESULT_COLUMNS, SUMMARY_COLUMNS
 from .utils import clean_text
@@ -38,6 +40,7 @@ def write_results(path, detected, shortlisted, discarded, applied, intervention_
         )
         tables["resumen_ejecucion"][1].extend(_application_metrics(previous_applications.get("rows", [])))
     payload = {
+        "schema_version": 1,
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "sheets": {
             name: {
@@ -52,7 +55,12 @@ def write_results(path, detected, shortlisted, discarded, applied, intervention_
         },
     }
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
+    try:
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
     return path
 
 

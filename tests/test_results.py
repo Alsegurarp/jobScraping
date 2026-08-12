@@ -1,5 +1,10 @@
 import json
+import os
+import shutil
 from pathlib import Path
+from uuid import uuid4
+
+import pytest
 
 from botjobs.results import write_results
 
@@ -38,3 +43,28 @@ def test_new_search_preserves_application_history():
 
     assert payload["sheets"]["aplicaciones"]["rows"][0]["estado_aplicacion"] == "aplicada"
     assert {"metrica": "aplicaciones_aplicada", "valor": 1} in payload["sheets"]["resumen_ejecucion"]["rows"]
+
+
+def test_output_declares_schema_version():
+    write_results(TEST_OUTPUT, [], [], [], [], [], [])
+
+    payload = json.loads(TEST_OUTPUT.read_text(encoding="utf-8"))
+
+    assert payload["schema_version"] == 1
+
+
+def test_failed_atomic_replace_preserves_previous_result(monkeypatch):
+    root = Path("runtime") / "test-results" / str(uuid4())
+    root.mkdir(parents=True)
+    try:
+        path = root / "results.json"
+        path.write_text('{"previous": true}', encoding="utf-8")
+        monkeypatch.setattr(os, "replace", lambda *_args: (_ for _ in ()).throw(OSError("replace failed")))
+
+        with pytest.raises(OSError, match="replace failed"):
+            write_results(path, [], [], [], [], [], [])
+
+        assert path.read_text(encoding="utf-8") == '{"previous": true}'
+        assert list(root.glob("*.tmp")) == []
+    finally:
+        shutil.rmtree(root)

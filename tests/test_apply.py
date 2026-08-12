@@ -81,7 +81,8 @@ def test_submit_is_idempotent(monkeypatch):
     results = output / "botjobs_resultados.json"
     results.write_text(json.dumps({"sheets": {"preseleccionadas": {"rows": [{"url": url, "carta_id": "letter"}]}}}), encoding="utf-8")
     monkeypatch.setattr("botjobs.apply.prepare_application", lambda *args, **kwargs: {
-        "estado": "aplicada", "resultado": "Portal confirmó el envío", "evidencia": "proof.png"
+        "estado": "aplicada", "resultado": "Portal confirmó el envío", "evidencia": "proof.png",
+        "url_final": url, "submit_intentado": True,
     })
 
     first = apply_approved(results, runtime, output, browser=True, submit=True, confirmation="ENVIAR")

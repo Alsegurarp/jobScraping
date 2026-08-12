@@ -30,19 +30,31 @@ def extract_job_posting(row, markup, portal_name, source_name, selectors=()):
     block_status = detect_block(text)
     job = job_posting(markup)
     employment_type = employment_type_text(job.get("employmentType"))
+    recognized = bool(job) or bool(meta_content(markup, "description", "og:description", "twitter:description"))
+    if not recognized:
+        recognized = any(re.search(selector, markup, flags=re.I | re.S) for selector in selectors)
+    description = description_from_markup(markup, text, job, selectors)
+    if block_status:
+        extraction_status = block_status
+    elif not recognized:
+        extraction_status = "estructura_no_reconocida"
+    elif description:
+        extraction_status = "ok"
+    else:
+        extraction_status = "sin_descripcion"
 
     updates = {
         "titulo": clean_text(job.get("title")) or page_title(markup),
         "empresa": organization_name(job.get("hiringOrganization")),
         "portal": portal_name,
-        "descripcion": description_from_markup(markup, text, job, selectors),
+        "descripcion": description,
         "ubicacion": location_text(job.get("jobLocation")),
         "salario": salary_text(job.get("baseSalary")),
         "fecha_publicacion": clean_text(job.get("datePosted")),
         "email_contacto": first_email(text),
         "fuente_extraccion": source_name,
-        "estado_extraccion": block_status or ("ok" if text or job else "sin_descripcion"),
-        "requiere_intervencion": "si" if block_status in {"captcha", "login_requerido", "bloqueado"} else "no",
+        "estado_extraccion": extraction_status,
+        "requiere_intervencion": "si" if extraction_status in {"captcha", "login_requerido", "bloqueado", "estructura_no_reconocida"} else "no",
     }
     if employment_type and not clean_text(row.get("modalidad")):
         updates["modalidad"] = employment_type
