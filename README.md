@@ -368,3 +368,31 @@ El respaldo incluye `runtime/`, `cache/` y `output/`. Se escribe de forma atómi
 ## Entrega
 
 Los sprints, criterios de aceptacion, evidencias y riesgos se administran en [docs/BITACORA_SPRINTS.md](docs/BITACORA_SPRINTS.md). Ningun entregable se considera terminado sin pruebas automatizadas en verde y una comprobacion reproducible desde PowerShell.
+
+# EVALUAR OFERTAS - COMANDOS
+ El CLI puede evaluar 200 ofertas con:
+
+  .\.venv\Scripts\python.exe .\bot_jobs.py --auto-search --profile .\profile.example.json --out .\output --portals indeed,linkedin,occ,computrabajo,glassdoor
+  --max-results 200 --browser --refresh-cache
+
+  El CV activo 90f27b52594a27c2 se usará al preparar postulaciones. Sin embargo, hoy el bot:
+
+  - No aprueba automáticamente todas las ofertas con puntuación mayor a 60.
+  - Exige una decisión aprobada por vacante.
+  - Genera cartas desde el perfil y datos de la vacante, pero todavía no incorpora cvAlexis.md.
+  - No puede garantizar 200 resultados si los portales bloquean, solicitan login o devuelven duplicados.
+
+  Después de aprobar las vacantes, la simulación segura sería:
+
+  .\.venv\Scripts\python.exe .\bot_jobs.py --apply-approved --jobs .\output\botjobs_resultados.json --out .\output --runtime .\runtime --dry-run
+
+  Y el envío automático:
+
+  .\.venv\Scripts\python.exe .\bot_jobs.py --apply-approved --jobs .\output\botjobs_resultados.json --out .\output --runtime .\runtime --browser --submit
+  --confirm-submit ENVIAR
+
+  Antes de poder ejecutar exactamente el flujo solicitado habría que implementar un comando como:
+
+  python .\bot_jobs.py auto-apply --min-score 60 --max-results 200 --cv-id 90f27b52594a27c2 --cv-context .\cvAlexis.md --confirm-submit ENVIAR
+
+  Ese comando es solo el contrato propuesto: todavía no está implementado y no debe ejecutarse esperando que funcione.
