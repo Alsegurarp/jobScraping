@@ -58,29 +58,62 @@ Los estados `ERROR` producen codigo de salida `1`; una `ADVERTENCIA` sobre el na
 
 El flujo normal del proyecto se ejecuta en este orden:
 
-1. Instalar y verificar el entorno.
-2. Configurar el perfil laboral.
-3. Agregar y activar al menos un CV.
-4. Buscar vacantes automáticamente o cargarlas en la plantilla.
-5. Revisar el ranking, descartes, intervenciones y cartas generadas.
-6. Registrar una decisión por cada vacante revisada.
-7. Ejecutar una simulación con `--dry-run`.
-8. Preparar las aplicaciones autorizadas con navegador, sin enviar.
-9. Resolver manualmente login o captcha y revisar la evidencia.
-10. Opcionalmente habilitar el envío con confirmación literal.
-11. Crear un respaldo de resultados y estado local.
+Todas las rutas siguientes son relativas a la raíz del proyecto, por ejemplo `C:\codeProjects\BotJobs\`. Los comandos deben ejecutarse desde esa carpeta.
+
+1. Instalar y verificar el entorno. El entorno se crea en `.venv\`; las dependencias se declaran en `requirements.lock.txt` y `requirements-dev.txt`.
+2. Configurar el perfil laboral en `profile.example.json`, o en una copia local indicada mediante `--profile RUTA`.
+3. Colocar el PDF original en cualquier ruta legible y agregarlo con `cv add`. BotJobs copia el contenido operativo a `runtime\documents\cv\`.
+4. Buscar vacantes automáticamente o declararlas en la hoja `vacantes` de `vacantes.template.xlsx`.
+5. Revisar el ranking y las intervenciones en `output\botjobs_resultados.json`; revisar las cartas en `output\cartas\`.
+6. Registrar una decisión por cada vacante. BotJobs las conserva en `runtime\decisions.json`.
+7. Ejecutar una simulación con `--dry-run`. Este paso solo escribe el reporte en la terminal y no modifica rutas locales.
+8. Preparar las aplicaciones autorizadas con navegador, sin enviar. El historial se agrega a `output\botjobs_resultados.json` y las capturas se guardan en `runtime\evidence\`.
+9. Resolver manualmente login o captcha. Las sesiones persistentes se guardan por portal en `runtime\browser-profiles\PORTAL\`.
+10. Opcionalmente habilitar el envío con confirmación literal. Los intentos se registran en `runtime\submitted_applications.json`.
+11. Crear un respaldo en `backups\`, por ejemplo `backups\botjobs.zip`; incluye `runtime\`, `cache\` y `output\`.
+
+### Mapa completo de rutas
+
+| Contenido | Ruta | Quién lo crea o edita | Tratamiento |
+|---|---|---|---|
+| Entrada principal | `bot_jobs.py` | Proyecto | Ejecutar; no contiene datos personales. |
+| Perfil y reglas laborales | `profile.example.json` o ruta pasada a `--profile` | Usuario | Editar nombre, contacto, filtros, skills y preferencias. |
+| Plantilla de vacantes | `vacantes.template.xlsx` | Usuario o `--create-template` | Declarar vacantes manuales en la hoja `vacantes`. |
+| Dependencias de ejecución | `requirements.lock.txt` | Proyecto | Versiones exactas usadas por el instalador. |
+| Dependencias de pruebas | `requirements-dev.txt` | Proyecto | Herramientas necesarias para ejecutar la suite. |
+| Entorno Python | `.venv\` | `scripts\install.ps1` | Generado localmente; no editar manualmente. |
+| CV original | Cualquier ruta indicada en `cv add --file` | Usuario | Solo es una fuente de importación; puede estar fuera del proyecto. |
+| Copia operativa del CV | `runtime\documents\cv\CV_ID.pdf` | BotJobs | PDF utilizado al preparar formularios. |
+| Metadatos del CV | `runtime\documents\cv\CV_ID.json` | BotJobs | Identificador, nombre, tamaño, fecha y estado activo. |
+| Decisiones por vacante | `runtime\decisions.json` | `decisions set|remove` | Aprobación, descarte, revisión, nota y CV asociado. |
+| Sesiones del navegador | `runtime\browser-profiles\PORTAL\` | Navegador | Cookies y sesión persistente; contenido privado. |
+| Evidencias | `runtime\evidence\HASH.png` | Navegador | Capturas de preparación o intento. |
+| Registro de envíos | `runtime\submitted_applications.json` | BotJobs | Estados `en_progreso`, `confirmado` o `incierto`. |
+| Resultado principal | `output\botjobs_resultados.json` | Búsqueda, ranking y aplicación | Fuente canónica de resultados e historial. |
+| Cartas | `output\cartas\EMPRESA-VACANTE.md` | BotJobs | Carta generada para cada preseleccionada. |
+| Caché HTML | `cache\html\PORTAL\HASH.html` | Extracción | Respuesta reutilizable de los portales. |
+| URLs ignoradas | `cache\ignored_urls.json` | Ranking | Vacantes descartadas que pueden omitirse en futuras corridas. |
+| Respaldos | `backups\NOMBRE.zip` | `backup create` | Copia de `runtime\`, `cache\` y `output\`. |
+| Resultados de pruebas | `docs\tests\` | Proceso TDD | Evidencia de cada sprint y aceptación. |
+| Manual operativo | `docs\MANUAL_OPERATIVO.md` | Proyecto | Instalación, operación y recuperación. |
+| Checklist de entrega | `docs\CHECKLIST_ENTREGA.md` | Proyecto/usuario | Validación antes de utilizar la entrega. |
+
+`runtime\`, `output\`, `cache\`, `backups\` y `.venv\` contienen artefactos locales o privados y no deben subirse al repositorio.
 
 ### Inputs necesarios
 
-| Input | Obligatorio | Formato o valores | Uso |
-|---|---|---|---|
-| Perfil | Sí | JSON | Identidad, filtros, skills y preferencias de ranking. |
-| CV | Sí para preparar o enviar | PDF válido, máximo 4 MB | Documento cargado en formularios. |
-| Vacantes | Sí | Búsqueda automática o `vacantes.template.xlsx` | Fuente de URLs y datos laborales. |
-| Decisión | Sí para postular | `aprobada`, `descartada` o `revision` | Autorización explícita por URL. |
-| Carta | Sí para preparar o enviar | `.md` generado para una preseleccionada | Texto personalizado de postulación. |
-| Navegador | Solo para extracción o postulación asistida | Node y Chrome o Edge | Renderizado, sesión, formularios y evidencia. |
-| Confirmación de envío | Solo para enviar | Texto literal `ENVIAR` | Autoriza el clic final. |
+| Input | Ruta donde se declara | Obligatorio | Formato o valores | Uso |
+|---|---|---|---|---|
+| Perfil | `profile.example.json` o `--profile RUTA` | Sí | JSON | Identidad, filtros, skills y preferencias de ranking. |
+| CV | Ruta fuente en `cv add --file`; copia en `runtime\documents\cv\` | Sí para preparar o enviar | PDF válido, máximo 4 MB | Documento cargado en formularios. |
+| Vacantes manuales | Hoja `vacantes` de `vacantes.template.xlsx` o `--jobs RUTA` | Sí si no se usa búsqueda automática | XLSX | Fuente de URLs y datos laborales. |
+| Parámetros de búsqueda | Argumentos `--portals`, `--max-results`, `--browser`, `--research` | Sí al usar `--auto-search` | Opciones CLI | Define portales y alcance de la corrida. |
+| Decisión | Comando `decisions set`; persistencia en `runtime\decisions.json` | Sí para postular | `aprobada`, `descartada` o `revision` | Autorización explícita por URL. |
+| Carta | `output\cartas\CARTA_ID.md` | Sí para preparar o enviar | Markdown generado para una preseleccionada | Texto personalizado de postulación. |
+| Navegador | Node y Chrome o Edge instalados; sesión en `runtime\browser-profiles\` | Solo para extracción o postulación asistida | Runtime local | Renderizado, sesión, formularios y evidencia. |
+| Confirmación de eliminación | Argumento `--confirm BORRAR` | Solo al eliminar | Texto literal `BORRAR` | Autoriza eliminar CV o decisión. |
+| Confirmación de restauración | Argumento `--confirm RESTAURAR` | Solo al restaurar | Texto literal `RESTAURAR` | Autoriza sobrescribir archivos respaldados. |
+| Confirmación de envío | Argumento `--confirm-submit ENVIAR` | Solo para enviar | Texto literal `ENVIAR` | Autoriza el clic final. |
 
 El perfil predeterminado es `profile.example.json`. Para uso personal se recomienda crear una copia, por ejemplo `profile.local.json`, y pasarla con `--profile`. Sus campos operativos principales son:
 
@@ -92,7 +125,7 @@ El perfil predeterminado es `profile.example.json`. Para uso personal se recomie
 - `allowed_industries` y `blocked_industries`;
 - `preferred_locations` e `interest_keywords`.
 
-No es necesario incluir una ruta de CV en el perfil: el CV operativo se administra con el comando `cv` y se guarda bajo `runtime/`.
+No es necesario incluir una ruta de CV en el perfil: el CV operativo se administra con el comando `cv` y se guarda bajo `runtime\documents\cv\`.
 
 ### Output esperado por etapa
 

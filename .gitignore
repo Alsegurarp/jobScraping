@@ -1,4 +1,5 @@
 READMElocal.md
+.venv/
 output/
 tmp/
 cache/
